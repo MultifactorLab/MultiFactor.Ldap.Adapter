@@ -27,7 +27,7 @@ namespace MultiFactor.Ldap.Adapter.Services
 
         public bool Authenticate(string userName)
         {
-            var url = _configuration.ApiUrl + "/access/requests/ra";
+            var url = _configuration.ApiUrl + "/access/requests/la";
             var payload = new
             {
                 Identity = userName,
