@@ -34,7 +34,7 @@ namespace MultiFactor.Ldap.Adapter.Core
     public class LdapAttribute
     {
         private Tag _tag;
-        protected Byte[] Value = new Byte[0];
+        public Byte[] Value = new Byte[0];
         public List<LdapAttribute> ChildAttributes = new List<LdapAttribute>();
 
         public TagClass Class => _tag.Class;

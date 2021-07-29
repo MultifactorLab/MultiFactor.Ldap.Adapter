@@ -3,6 +3,7 @@
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
 using MultiFactor.Ldap.Adapter.Core;
+using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
 using System;
@@ -10,6 +11,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace MultiFactor.Ldap.Adapter.Server
@@ -118,14 +120,26 @@ namespace MultiFactor.Ldap.Adapter.Server
             var bindRequest = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.BindRequest);
             if (bindRequest != null)
             {
-                var isSasl = bindRequest.ChildAttributes[2].IsConstructed;
-                if (isSasl)
+                var authentication = LoadAuthentication(bindRequest);
+                if (authentication != null && authentication.TryParse(bindRequest, out var userName))
                 {
-                    ProcessSaslBind(bindRequest);
-                }
-                else
-                {
-                    ProcessSimpleBind(bindRequest);
+                    if (!string.IsNullOrEmpty(userName)) //empty userName means anonymous bind
+                    {
+                        var uid = ConvertDistinguishedNameToUserName(userName);
+
+                        if (_configuration.ServiceAccounts.Any(acc => acc == uid.ToLower()))
+                        {
+                            //service acc
+                            _logger.Debug($"Received {authentication.MechanismName} bind request for service account '{userName}' from {_clientConnection.Client.RemoteEndPoint}");
+                        }
+                        else
+                        {
+                            //user acc
+                            _userName = uid;
+                            _status = LdapProxyAuthenticationStatus.BindRequested;
+                            _logger.Debug($"Received {authentication.MechanismName} bind request for user '{userName}' from {_clientConnection.Client.RemoteEndPoint}");
+                        }
+                    }
                 }
             }
 
@@ -141,7 +155,13 @@ namespace MultiFactor.Ldap.Adapter.Server
             
                 if (bindResponse != null)
                 {
-                    var bound = bindResponse.ChildAttributes[0].GetValue<LdapResult>() == LdapResult.success;
+                    var bindResult = bindResponse.ChildAttributes[0].GetValue<LdapResult>();
+                    if (bindResult == LdapResult.saslBindInProgress)    //  challenge/response in process
+                    {
+                        return (data, length);  //just proxy
+                    }
+
+                    var bound = bindResult == LdapResult.success;
 
                     if (bound)  //first factor authenticated
                     {
@@ -194,38 +214,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                 _status = LdapProxyAuthenticationStatus.None;
             }
 
-            return (data, length);
-        }
-
-        private void ProcessSimpleBind(LdapAttribute bindRequest)
-        {
-            var bindDn = bindRequest.ChildAttributes[1].GetValue<string>();
-
-            //empty userName means anonymous bind
-            if (!string.IsNullOrEmpty(bindDn))
-            {
-                var uid = ConvertDistinguishedNameToUserName(bindDn);
-
-                if (_configuration.ServiceAccounts.Any(acc => acc == uid.ToLower()))
-                {
-                    //service acc
-                    _logger.Debug($"Received simple bind request for service account '{bindDn}' from {_clientConnection.Client.RemoteEndPoint}");
-                }
-                else
-                {
-                    //user acc
-                    _userName = uid;
-                    _status = LdapProxyAuthenticationStatus.BindRequested;
-                    _logger.Debug($"Received simple bind request for user '{bindDn}' from {_clientConnection.Client.RemoteEndPoint}");
-                }
-            }
-        }
-
-        private void ProcessSaslBind(LdapAttribute bindRequest)
-        {
-            //todo
-            //var mechanism = bindRequest.ChildAttributes[2].ChildAttributes[0].GetValue<string>();
-            //var ntlmPacket = bindRequest.ChildAttributes[2].ChildAttributes[1].GetValue<byte[]>();
+            return (data, length);  //just proxy
         }
 
         private string ConvertDistinguishedNameToUserName(string name)
@@ -238,6 +227,42 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
 
             return name;
+        }
+
+        private BindAuthentication LoadAuthentication(LdapAttribute bindRequest)
+        {
+            var authPacket = bindRequest.ChildAttributes[2];
+            if (!authPacket.IsConstructed)  //simple bind or NTLM
+            {
+                if (BindAuthentication.IsNtlm(authPacket.Value))
+                {
+                    return new NtlmBindAuthentication(_logger);
+                }
+
+                return new SimpleBindAuthentication(_logger);
+            }
+
+            var mechanism = authPacket.ChildAttributes[0].GetValue<string>();
+            
+            if (mechanism == "DIGEST-MD5")
+            {
+                return new DigestMd5BindAuthentication(_logger);
+            }
+            
+            if (mechanism == "GSS-SPNEGO")
+            {
+                var saslPacket = authPacket.ChildAttributes[1].Value;
+                if (BindAuthentication.IsNtlm(saslPacket))
+                {
+                    return new SpnegoNtlmBindAuthentication(_logger);
+                }
+            }
+
+
+            //kerberos or not-implemented
+            //_logger.Debug($"Unknown bind mechanism: {mechanism}");
+
+            return null;
         }
 
         private LdapPacket InvalidCredentials(LdapPacket requestPacket)

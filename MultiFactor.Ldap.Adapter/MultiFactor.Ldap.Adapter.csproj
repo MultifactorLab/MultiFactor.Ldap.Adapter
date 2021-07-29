@@ -123,6 +123,11 @@
     <Compile Include="Core\TagClass.cs" />
     <Compile Include="Core\UniversalDataType.cs" />
     <Compile Include="Core\Utils.cs" />
+    <Compile Include="Server\Authentication\DigestMd5BindAuthentication.cs" />
+    <Compile Include="Server\Authentication\NtlmBindAuthentication.cs" />
+    <Compile Include="Server\Authentication\SpnegoNtlmBindAuthentication.cs" />
+    <Compile Include="Server\Authentication\SimpleBindAuthentication.cs" />
+    <Compile Include="Server\BindAuthentication.cs" />
     <Compile Include="Server\LdapProxy.cs" />
     <Compile Include="Server\LdapServer.cs" />
     <Compile Include="Server\LdapsServer.cs" />
