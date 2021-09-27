@@ -60,7 +60,7 @@ namespace MultiFactor.Ldap.Adapter
         /// <summary>
         /// Service accounts OU - bind requests with this OU will be ignored
         /// </summary>
-        public string ServiceAccountsOrganizationUnit { get; set; }
+        public string[] ServiceAccountsOrganizationUnit { get; set; }
 
 
         #endregion
@@ -152,7 +152,6 @@ namespace MultiFactor.Ldap.Adapter
                 NasIdentifier = nasIdentifierSetting,
                 MultiFactorSharedSecret = multiFactorSharedSecretSetting,
                 LogLevel = logLevelSetting,
-                ServiceAccountsOrganizationUnit = serviceAccountsOrganizationUnitSetting
             };
 
             if (!string.IsNullOrEmpty(adapterLdapEndpointSetting))
@@ -183,6 +182,14 @@ namespace MultiFactor.Ldap.Adapter
             if (!string.IsNullOrEmpty(serviceAccountsSetting))
             {
                 configuration.ServiceAccounts = serviceAccountsSetting
+                    .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(acc => acc.Trim().ToLower())
+                    .ToArray();
+            }
+
+            if (!string.IsNullOrEmpty(serviceAccountsOrganizationUnitSetting))
+            {
+                configuration.ServiceAccountsOrganizationUnit = serviceAccountsOrganizationUnitSetting
                     .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(acc => acc.Trim().ToLower())
                     .ToArray();
