@@ -4,9 +4,12 @@
 
 using MultiFactor.Ldap.Adapter.Core;
 using MultiFactor.Ldap.Adapter.Services;
+using MultiFactor.Ldap.Adapter.Syslog;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using Serilog.Formatting;
+using Serilog.Formatting.Compact;
 using Serilog.Sinks.Syslog;
 using System;
 using System.Configuration;
@@ -34,9 +37,21 @@ namespace MultiFactor.Ldap.Adapter
             //create logging
             var levelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
             var loggerConfiguration = new LoggerConfiguration()
-                .MinimumLevel.ControlledBy(levelSwitch)
-                .WriteTo.Console(LogEventLevel.Debug)
-                .WriteTo.File($"{path}Logs{Path.DirectorySeparatorChar}log-.txt", rollingInterval: RollingInterval.Day);
+                .MinimumLevel.ControlledBy(levelSwitch);
+
+            var formatter = GetLogFormatter();
+            if (formatter != null)
+            {
+                loggerConfiguration
+                    .WriteTo.Console(formatter)
+                    .WriteTo.File(formatter, $"{path}Logs{Path.DirectorySeparatorChar}log-.txt", rollingInterval: RollingInterval.Day);
+            }
+            else
+            {
+                loggerConfiguration
+                    .WriteTo.Console()
+                    .WriteTo.File($"{path}Logs{Path.DirectorySeparatorChar}log-.txt", rollingInterval: RollingInterval.Day);
+            }
 
             ConfigureSyslog(loggerConfiguration, out var syslogInfoMessage);
 
@@ -157,7 +172,7 @@ namespace MultiFactor.Ldap.Adapter
                 var data = cert.Export(X509ContentType.Pfx);
                 File.WriteAllBytes(certPath, data);
 
-                logger.Information($"Self-signed certificate saved to {certPath}");
+                logger.Information($"Self-signed certificate with subject CN={subj} saved to {certPath}");
 
                 configuration.X509Certificate = cert;
             }
@@ -201,22 +216,11 @@ namespace MultiFactor.Ldap.Adapter
             var sysLogFacilitySetting = appSettings["syslog-facility"];
             var sysLogAppName = appSettings["syslog-app-name"] ?? "multifactor-ldap";
 
+            var isJson = Configuration.GetLogFormat() == "json";
+
             var facility = ParseSettingOrDefault(sysLogFacilitySetting, Facility.Auth);
             var format = ParseSettingOrDefault(sysLogFormatSetting, SyslogFormat.RFC5424);
             var framer = ParseSettingOrDefault(sysLogFramerSetting, FramingType.OCTET_COUNTING);
-
-            ISyslogFormatter formatter;
-            switch (format)
-            {
-                case SyslogFormat.RFC5424:
-                    formatter = new Rfc5424Formatter(facility: facility, applicationName: sysLogAppName);
-                    break;
-                case SyslogFormat.RFC3164:
-                    formatter = new Rfc3164Formatter(facility: facility, applicationName: sysLogAppName);
-                    break;
-                default:
-                    throw new NotImplementedException($"Unknown syslog format {format}");
-            }
 
             if (sysLogServer != null)
             {
@@ -233,20 +237,13 @@ namespace MultiFactor.Ldap.Adapter
                         var serverIp = ResolveIP(uri.Host);
                         loggerConfiguration
                             .WriteTo
-                            .UdpSyslog(serverIp, port: uri.Port, format: format, appName: sysLogAppName, facility: facility);
+                            .JsonUdpSyslog(serverIp, port: uri.Port, appName: sysLogAppName, format: format, facility: facility, json: isJson);
                         logMessage = $"Using syslog server: {sysLogServer}, format: {format}, facility: {facility}, appName: {sysLogAppName}";
                         break;
                     case "tcp":
-                        var tcpConfig = new SyslogTcpConfig
-                        {
-                            Host = uri.Host,
-                            Port = uri.Port,
-                            Framer = new MessageFramer(framer),
-                            Formatter = formatter,
-                        };
                         loggerConfiguration
                             .WriteTo
-                            .TcpSyslog(tcpConfig);
+                            .JsonTcpSyslog(uri.Host, uri.Port, appName: sysLogAppName, format: format, framingType: framer, facility: facility, json: isJson);
                         logMessage = $"Using syslog server {sysLogServer}, format: {format}, framing: {framer}, facility: {facility}, appName: {sysLogAppName}";
                         break;
                     default:
@@ -276,6 +273,18 @@ namespace MultiFactor.Ldap.Adapter
             }
 
             return host;
+        }
+
+        private static ITextFormatter GetLogFormatter()
+        {
+            var format = Configuration.GetLogFormat();
+            switch (format?.ToLower())
+            {
+                case "json":
+                    return new RenderedCompactJsonFormatter();
+                default:
+                    return null;
+            }
         }
     }
 }

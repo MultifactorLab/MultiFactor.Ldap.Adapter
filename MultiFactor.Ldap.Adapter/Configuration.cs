@@ -251,6 +251,12 @@ namespace MultiFactor.Ldap.Adapter
             }
         }
 
+        public static string GetLogFormat()
+        {
+            var appSettings = ConfigurationManager.AppSettings;
+            return appSettings?["logging-format"];
+        }
+
         #endregion
     }
 }
