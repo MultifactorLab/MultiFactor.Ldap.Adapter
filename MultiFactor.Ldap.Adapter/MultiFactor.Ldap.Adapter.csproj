@@ -115,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="Core\BerLen.cs" />
     <Compile Include="Core\LdapAttribute.cs" />
     <Compile Include="Core\LdapFilterChoice.cs" />
     <Compile Include="Core\LdapOperation.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="Server\LdapsServer.cs" />
     <Compile Include="Server\RemoteEndPoint.cs" />
     <Compile Include="Services\CertificateService.cs" />
+    <Compile Include="Services\LdapService.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="ServiceInstaller.cs">
       <SubType>Component</SubType>

@@ -68,7 +68,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                 try
                 {
                     var remoteClient = await _server.AcceptTcpClientAsync();
-                    var task = Task.Factory.StartNew(async () => await HandleClint(remoteClient), TaskCreationOptions.LongRunning);
+                    var task = Task.Factory.StartNew(async () => await HandleClient(remoteClient), TaskCreationOptions.LongRunning);
                 }
                 catch (ObjectDisposedException) //may be safetly ignored
                 {
@@ -81,7 +81,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
         }
 
-        private async Task HandleClint(TcpClient client)
+        private async Task HandleClient(TcpClient client)
         {
             client.NoDelay = true;
 
