@@ -76,32 +76,20 @@ namespace MultiFactor.Ldap.Adapter.Services
             return packet;
         }
 
-        private static void Dump(LdapAttribute attr, int depth)
-        {
-            var tab = new string('\t', depth);
-
-            //var value = string.Empty;
-            //if (attr..Value is byte[] && attr.DataType == UniversalDataType.OctetString || attr.DataType == null)
-            //{
-            //    //value = Utils.ByteArrayToString(attr.Value);
-            //    value = Encoding.UTF8.GetString(attr.Value);
-            //}
-
-            Console.WriteLine($"{tab}{attr.LdapOperation} Class:{attr.Class} ContextType:{attr.ContextType} DataType:{attr.DataType} Value: {attr.GetValue()} ({attr.Value.Length})");
-
-            foreach (var child in attr.ChildAttributes)
-            {
-                Dump(child, depth + 1);
-            }
-        }
-
         private IEnumerable<string> GetGroups(LdapPacket packet)
         {
+            var groups = new List<string>();
+
             foreach (var searchResultEntry in packet.ChildAttributes.FindAll(attr => attr.LdapOperation == LdapOperation.SearchResultEntry))
             {
-                var group = searchResultEntry.ChildAttributes[0].GetValue<string>();
-                yield return DnToCn(group);
+                if (searchResultEntry.ChildAttributes.Count > 0)
+                {
+                    var group = searchResultEntry.ChildAttributes[0].GetValue<string>();
+                    groups.Add(DnToCn(group));
+                }
             }
+
+            return groups;
         }
 
         /// <summary>
