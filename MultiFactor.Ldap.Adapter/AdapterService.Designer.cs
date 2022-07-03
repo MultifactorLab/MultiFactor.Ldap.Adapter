@@ -1,4 +1,6 @@
-﻿namespace MultiFactor.Ldap.Adapter
+﻿using MultiFactor.Ldap.Adapter.Configuration;
+
+namespace MultiFactor.Ldap.Adapter
 {
     partial class AdapterService
     {
@@ -16,7 +18,7 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            this.ServiceName = Configuration.ServiceUnitName;
+            this.ServiceName = ServiceConfiguration.ServiceUnitName;
         }
     }
 }

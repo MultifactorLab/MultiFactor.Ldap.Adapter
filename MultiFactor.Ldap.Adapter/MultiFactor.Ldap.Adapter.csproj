@@ -71,6 +71,9 @@
     <Reference Include="BouncyCastle.Crypto, Version=1.8.9.0, Culture=neutral, PublicKeyToken=0e99375e54769942">
       <HintPath>..\packages\BouncyCastle.1.8.9\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="IPAddressRange, Version=4.2.0.0, Culture=neutral, PublicKeyToken=578e3c3d17e7c751, processorArchitecture=MSIL">
+      <HintPath>..\packages\IPAddressRange.4.2.0\lib\net45\IPAddressRange.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -114,7 +117,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Configuration.cs" />
+    <Compile Include="Configuration\ClientConfiguration.cs" />
+    <Compile Include="Configuration\ServiceConfiguration.cs" />
     <Compile Include="Core\BerLen.cs" />
     <Compile Include="Core\LdapAttribute.cs" />
     <Compile Include="Core\LdapFilterChoice.cs" />
@@ -137,6 +141,8 @@
     <Compile Include="Server\LdapsServer.cs" />
     <Compile Include="Server\RemoteEndPoint.cs" />
     <Compile Include="Services\CertificateService.cs" />
+    <Compile Include="Services\IdentityType.cs" />
+    <Compile Include="Services\LdapProfile.cs" />
     <Compile Include="Services\LdapService.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="ServiceInstaller.cs">

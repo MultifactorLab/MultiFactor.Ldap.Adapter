@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
 using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;
@@ -11,7 +12,6 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace MultiFactor.Ldap.Adapter.Server
@@ -22,7 +22,8 @@ namespace MultiFactor.Ldap.Adapter.Server
         private TcpClient _serverConnection;
         private Stream _clientStream;
         private Stream _serverStream;
-        private Configuration _configuration;
+        private ServiceConfiguration _configuration;
+        private ClientConfiguration _clientConfig;
         private ILogger _logger;
         private string _userName;
         private string _lookupUserName;
@@ -34,7 +35,7 @@ namespace MultiFactor.Ldap.Adapter.Server
         private static readonly ConcurrentDictionary<string, string> _usersDn2Cn = new ConcurrentDictionary<string, string>();
         private static readonly ConcurrentDictionary<string, string> _usersCn2Dn = new ConcurrentDictionary<string, string>();
 
-        public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, Stream serverStream, Configuration configuration, ILogger logger)
+        public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, Stream serverStream, ServiceConfiguration configuration, ClientConfiguration clientConfig, ILogger logger)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
             _clientStream = clientStream ?? throw new ArgumentNullException(nameof(clientStream));
@@ -42,6 +43,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             _serverStream = serverStream ?? throw new ArgumentNullException(nameof(serverStream));
 
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _clientConfig = clientConfig ?? throw new ArgumentNullException(nameof(clientConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _ldapService = new LdapService(logger);
@@ -52,13 +54,13 @@ namespace MultiFactor.Ldap.Adapter.Server
             var from = _clientConnection.Client.RemoteEndPoint.ToString();
             var to = _serverConnection.Client.RemoteEndPoint.ToString();
 
-            _logger.Debug("Opened {client} => {server}", from, to);
+            _logger.Debug("Opened {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
 
             await Task.WhenAny(
                 DataExchange(_clientConnection, _clientStream, _serverConnection, _serverStream, ParseAndProcessRequest),
                 DataExchange(_serverConnection, _serverStream, _clientConnection, _clientStream, ParseAndProcessResponse));
 
-            _logger.Debug("Closed {client} => {server}", from, to);
+            _logger.Debug("Closed {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
         }
 
         private async Task DataExchange(TcpClient source, Stream sourceStream, TcpClient target, Stream targetStream, Func<byte[], int, Task<(byte[], int)>> process)
@@ -86,7 +88,7 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                 } while (bytesRead != 0);
             }
-            catch(IOException)
+            catch (IOException)
             {
                 //connection closed unexpectly
                 //_logger.Debug(ioex, "proxy");
@@ -147,7 +149,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             {
                 var packet = await LdapPacket.ParsePacket(data);
                 var bindResponse = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.BindResponse);
-            
+
                 if (bindResponse != null)
                 {
                     var bindResult = bindResponse.ChildAttributes[0].GetValue<LdapResult>();
@@ -164,17 +166,32 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                         var bypass = false;
 
-                        if (_configuration.CheckUserGroups())
+                        if (_clientConfig.CheckUserGroups())
                         {
-                            var userDn = ConvertCommonNameToDistinguishedName(_userName);
-                            var groups = await _ldapService.GetAllGroups(_serverStream, userDn);
+                            var profile = await _ldapService.LoadProfile(_serverStream, _userName);
+                            var profileLoaded = profile != null;
+
+                            if (!profileLoaded)
+                            {
+                                _logger.Error("User '{user:l}' not found. Can not check groups membership", _userName);
+                            }
+                            else
+                            {
+                                profile.MemberOf = await _ldapService.GetAllGroups(_serverStream, profile, _clientConfig);
+                            }
 
                             //check ACL
-                            if (!string.IsNullOrEmpty(_configuration.ActiveDirectoryGroup))
+                            if (profileLoaded && _clientConfig.ActiveDirectoryGroup.Any())
                             {
-                                if (!groups.Contains(_configuration.ActiveDirectoryGroup, StringComparer.InvariantCultureIgnoreCase))
+                                var accessGroup = _clientConfig.ActiveDirectoryGroup.FirstOrDefault(group => IsMemberOf(profile, group));
+                                if (accessGroup != null)
                                 {
-                                    _logger.Warning($"User '{{user:l}}' is not member of '{_configuration.ActiveDirectoryGroup}' group in {LdapService.BaseDn(userDn)}", _userName);
+                                    _logger.Debug($"User '{{user:l}}' is member of '{accessGroup.Trim()}' group in {profile.BaseDn}", _userName);
+                                }
+                                else
+                                {
+                                    _logger.Warning($"User '{{user:l}}' is not member of '{string.Join(";", _clientConfig.ActiveDirectoryGroup)}' group in {profile.BaseDn}", _userName);
+
                                     //return invalid creds response
                                     var responsePacket = InvalidCredentials(packet);
                                     var response = responsePacket.GetBytes();
@@ -185,33 +202,29 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                                     return (response, response.Length);
                                 }
-                                else
-                                {
-                                    _logger.Debug($"User '{{user:l}}' is member of '{_configuration.ActiveDirectoryGroup}' group in {LdapService.BaseDn(userDn)}", _userName);
-                                }
                             }
 
                             //check if mfa is mandatory
-                            if (!string.IsNullOrEmpty(_configuration.ActiveDirectory2FaGroup))
+                            if (profileLoaded && _clientConfig.ActiveDirectory2FaGroup.Any())
                             {
-                                if (groups.Contains(_configuration.ActiveDirectory2FaGroup, StringComparer.InvariantCultureIgnoreCase))
+                                var mfaGroup = _clientConfig.ActiveDirectory2FaGroup.FirstOrDefault(group => IsMemberOf(profile, group));
+                                if (mfaGroup != null)
                                 {
-                                    _logger.Debug($"User '{{user:l}}' is member of '{_configuration.ActiveDirectory2FaGroup}' group in {LdapService.BaseDn(userDn)}", _userName);
+                                    _logger.Debug($"User '{{user:l}}' is member of '{mfaGroup.Trim()}' group in {profile.BaseDn}", _userName);
+
                                 }
                                 else
                                 {
-                                    _logger.Debug($"User '{{user:l}}' is not member of '{_configuration.ActiveDirectory2FaGroup}' group in {LdapService.BaseDn(userDn)}", _userName);
-                                    _logger.Information("Bypass second factor for user '{user:l}'", _userName);
+                                    _logger.Debug($"User '{{user:l}}' is not member of '{string.Join(";", _clientConfig.ActiveDirectory2FaGroup)}' group in {profile.BaseDn}", _userName);
                                     bypass = true;
                                 }
                             }
-
                         }
 
                         if (!bypass)
                         {
                             var apiClient = new MultiFactorApiClient(_configuration, _logger);
-                            var result = await apiClient.Authenticate(_userName); //second factor
+                            var result = await apiClient.Authenticate(_clientConfig, _userName); //second factor
 
                             if (!result) // second factor failed
                             {
@@ -242,7 +255,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             {
                 var packet = await LdapPacket.ParsePacket(data);
                 var searchResultEntry = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.SearchResultEntry);
-                
+
                 if (searchResultEntry != null)
                 {
                     var userDn = searchResultEntry.ChildAttributes[0].GetValue<string>();
@@ -250,7 +263,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                     if (_lookupUserName != null && userDn != null)
                     {
                         userDn = userDn.ToLower(); //becouse some apps do it
-                        
+
                         _usersDn2Cn.TryRemove(userDn, out _);
                         _usersDn2Cn.TryAdd(userDn, _lookupUserName);
 
@@ -279,18 +292,6 @@ namespace MultiFactor.Ldap.Adapter.Server
             return dn;
         }
 
-        private string ConvertCommonNameToDistinguishedName(string cn)
-        {
-            if (string.IsNullOrEmpty(cn)) return cn;
-
-            if (_usersCn2Dn.TryGetValue(cn, out var dn))
-            {
-                return dn;
-            }
-
-            return cn;
-        }
-
         private BindAuthentication LoadAuthentication(LdapAttribute bindRequest)
         {
             var authPacket = bindRequest.ChildAttributes[2];
@@ -305,12 +306,12 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
 
             var mechanism = authPacket.ChildAttributes[0].GetValue<string>();
-            
+
             if (mechanism == "DIGEST-MD5")
             {
                 return new DigestMd5BindAuthentication(_logger);
             }
-            
+
             if (mechanism == "GSS-SPNEGO")
             {
                 var saslPacket = authPacket.ChildAttributes[1].Value;
@@ -364,20 +365,22 @@ namespace MultiFactor.Ldap.Adapter.Server
 
         private bool IsServiceAccount(string userName)
         {
-            if (_configuration.ServiceAccounts.Any(acc => acc == userName.ToLower()))
+            if (_clientConfig.ServiceAccounts.Any(acc => acc == userName.ToLower()))
             {
                 return true;
             }
 
-            if (_configuration.ServiceAccountsOrganizationUnit != null)
+            if (_clientConfig.ServiceAccountsOrganizationUnit.Any(ou => userName.ToLower().Contains(ou)))
             {
-                if (_configuration.ServiceAccountsOrganizationUnit.Any(ou => userName.ToLower().Contains(ou)))
-                {
-                    return true;
-                }
+                return true;
             }
 
             return false;
+        }
+
+        private bool IsMemberOf(LdapProfile profile, string group)
+        {
+            return profile.MemberOf?.Any(g => g.ToLower() == group.ToLower().Trim()) ?? false;
         }
     }
 

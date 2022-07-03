@@ -1,4 +1,6 @@
-﻿namespace MultiFactor.Ldap.Adapter
+﻿using MultiFactor.Ldap.Adapter.Configuration;
+
+namespace MultiFactor.Ldap.Adapter
 {
     partial class ServiceInstaller
     {
@@ -28,8 +30,8 @@
             // 
             this.serviceInstaller1.DelayedAutoStart = true;
             this.serviceInstaller1.Description = "MultiFactor.Ldap.Adapter";
-            this.serviceInstaller1.DisplayName = Configuration.ServiceDisplayName;
-            this.serviceInstaller1.ServiceName = Configuration.ServiceUnitName;
+            this.serviceInstaller1.DisplayName = ServiceConfiguration.ServiceDisplayName;
+            this.serviceInstaller1.ServiceName = ServiceConfiguration.ServiceUnitName;
             this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
             // 
             // ServiceInstaller

@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Server;
 using Serilog;
 using System;
@@ -14,9 +15,9 @@ namespace MultiFactor.Ldap.Adapter
     {
         private LdapServer _ldapServer;
         private LdapsServer _ldapsServer;
-        private Configuration _configuration;
+        private ServiceConfiguration _configuration;
 
-        public AdapterService(Configuration configuration, ILogger logger)
+        public AdapterService(ServiceConfiguration configuration, ILogger logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 

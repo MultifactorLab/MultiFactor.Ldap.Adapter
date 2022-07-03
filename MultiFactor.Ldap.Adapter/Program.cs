@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
 using MultiFactor.Ldap.Adapter.Services;
 using MultiFactor.Ldap.Adapter.Syslog;
@@ -76,7 +77,7 @@ namespace MultiFactor.Ldap.Adapter
             try
             {
                 //init configuration
-                var configuration = Configuration.Load();
+                var configuration = ServiceConfiguration.Load(Log.Logger);
 
                 SetLogLevel(configuration.LogLevel, levelSwitch);
                 if (syslogInfoMessage != null)
@@ -134,24 +135,24 @@ namespace MultiFactor.Ldap.Adapter
 
         private static void InstallService()
         {
-            Log.Logger.Information($"Installing service {Configuration.ServiceUnitName}");
+            Log.Logger.Information($"Installing service {ServiceConfiguration.ServiceUnitName}");
             System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[] { "/i", Assembly.GetExecutingAssembly().Location });
             Log.Logger.Information("Service installed");
-            Log.Logger.Information($"Use 'net start {Configuration.ServiceUnitName}' to run");
+            Log.Logger.Information($"Use 'net start {ServiceConfiguration.ServiceUnitName}' to run");
             Log.Logger.Information("Press any key to exit");
             Console.ReadKey();
         }
 
         public static void UnInstallService()
         {
-            Log.Logger.Information($"UnInstalling service {Configuration.ServiceUnitName}");
+            Log.Logger.Information($"UnInstalling service {ServiceConfiguration.ServiceUnitName}");
             System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[] { "/u", Assembly.GetExecutingAssembly().Location });
             Log.Logger.Information("Service uninstalled");
             Log.Logger.Information("Press any key to exit");
             Console.ReadKey();
         }
 
-        private static void GetOrCreateTlsCertificate(string path, Configuration configuration, ILogger logger)
+        private static void GetOrCreateTlsCertificate(string path, ServiceConfiguration configuration, ILogger logger)
         {
             var certDirectory = $"{path}Tls";
             if (!Directory.Exists(certDirectory))
@@ -216,7 +217,7 @@ namespace MultiFactor.Ldap.Adapter
             var sysLogFacilitySetting = appSettings["syslog-facility"];
             var sysLogAppName = appSettings["syslog-app-name"] ?? "multifactor-ldap";
 
-            var isJson = Configuration.GetLogFormat() == "json";
+            var isJson = ServiceConfiguration.GetLogFormat() == "json";
 
             var facility = ParseSettingOrDefault(sysLogFacilitySetting, Facility.Auth);
             var format = ParseSettingOrDefault(sysLogFormatSetting, SyslogFormat.RFC5424);
@@ -277,7 +278,7 @@ namespace MultiFactor.Ldap.Adapter
 
         private static ITextFormatter GetLogFormatter()
         {
-            var format = Configuration.GetLogFormat();
+            var format = ServiceConfiguration.GetLogFormat();
             switch (format?.ToLower())
             {
                 case "json":
