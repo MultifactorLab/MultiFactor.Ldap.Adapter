@@ -119,6 +119,9 @@
   <ItemGroup>
     <Compile Include="Configuration\ClientConfiguration.cs" />
     <Compile Include="Configuration\ServiceConfiguration.cs" />
+    <Compile Include="Configuration\UserNameTransformRulesCollection.cs" />
+    <Compile Include="Configuration\UserNameTransformRulesElement.cs" />
+    <Compile Include="Configuration\UserNameTransformRulesSection.cs" />
     <Compile Include="Core\BerLen.cs" />
     <Compile Include="Core\LdapAttribute.cs" />
     <Compile Include="Core\LdapFilterChoice.cs" />
