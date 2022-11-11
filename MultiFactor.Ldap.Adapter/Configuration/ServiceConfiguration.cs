@@ -51,23 +51,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             return null;
         }
 
-        #region general settings
-
-        /// <summary>
-        /// This service LDAP endpoint
-        /// </summary>
-        public IPEndPoint AdapterLdapEndpoint { get; set; }
-
-        public bool StartLdapServer { get; set; }
-
-        /// <summary>
-        /// This service LDAPS endpoint
-        /// </summary>
-        public IPEndPoint AdapterLdapsEndpoint { get; set; }
-
-        public bool StartLdapsServer { get; set; }
-
-        #endregion
+        public ILdapServerConfig ServerConfig { get; private set; }
 
         #region API settings
 
@@ -107,9 +91,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var appSettingsSection = serviceConfig.GetSection("appSettings");
             var appSettings = appSettingsSection as AppSettingsSection;
 
-
-            var adapterLdapEndpointSetting = appSettings.Settings["adapter-ldap-endpoint"]?.Value;
-            var adapterLdapsEndpointSetting = appSettings.Settings["adapter-ldaps-endpoint"]?.Value;
             var apiUrlSetting = appSettings.Settings["multifactor-api-url"]?.Value;
             var apiProxySetting = appSettings.Settings["multifactor-api-proxy"]?.Value;
             var logLevelSetting = appSettings.Settings["logging-level"]?.Value;
@@ -131,29 +112,20 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 LogLevel = logLevelSetting,
             };
 
-            if (!string.IsNullOrEmpty(adapterLdapEndpointSetting))
-            {
-                if (!TryParseIPEndPoint(adapterLdapEndpointSetting, out var adapterLdapEndpoint))
-                {
-                    throw new Exception("Configuration error: Can't parse 'adapter-ldap-endpoint' value");
-                }
-                configuration.AdapterLdapEndpoint = adapterLdapEndpoint;
-                configuration.StartLdapServer = true;
-            }
-
-            if (!string.IsNullOrEmpty(adapterLdapsEndpointSetting))
-            {
-                if (!TryParseIPEndPoint(adapterLdapsEndpointSetting, out var adapterLdapsEndpoint))
-                {
-                    throw new Exception("Configuration error: Can't parse 'adapter-ldaps-endpoint' value");
-                }
-                configuration.AdapterLdapsEndpoint = adapterLdapsEndpoint;
-                configuration.StartLdapsServer = true;
-            }
-
-            if (!(configuration.StartLdapServer || configuration.StartLdapsServer))
+            var ldapServerConfig = LdapServerConfig.Parse(appSettings);
+            if (ldapServerConfig.IsEmpty)
             {
                 throw new Exception("Configuration error: Neither 'adapter-ldap-endpoint' or 'adapter-ldaps-endpoint' configured");
+            }
+            configuration.ServerConfig = ldapServerConfig;
+
+            try
+            {
+                configuration.InvalidCredentialDelay = RandomWaiterConfig.Create(appSettings.Settings[Core.Constants.Configuration.PciDss.InvalidCredentialDelay]?.Value);
+            }
+            catch
+            {
+                throw new Exception($"Configuration error: Can't parse '{Core.Constants.Configuration.PciDss.InvalidCredentialDelay}' value");
             }
 
             var clientConfigFilesPath = Path.GetDirectoryName(AppDomain.CurrentDomain.BaseDirectory) + Path.DirectorySeparatorChar + "clients";
@@ -354,6 +326,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 return ConfigurationManager.AppSettings["service-display-name"] ?? "MultiFactor Ldap Adapter";
             }
         }
+
+        public RandomWaiterConfig InvalidCredentialDelay { get; set; }
 
         public static string GetLogFormat()
         {
