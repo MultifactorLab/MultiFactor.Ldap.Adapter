@@ -15,7 +15,8 @@ namespace MultiFactor.Ldap.Adapter.Server
 {
     public class LdapsServer : LdapServer
     {
-        public LdapsServer(IPEndPoint localEndpoint, ServiceConfiguration configuration, ILogger logger) : base(localEndpoint, configuration, logger)
+        public LdapsServer(IPEndPoint localEndpoint, ServiceConfiguration configuration, LdapProxyFactory proxyFactory, ILogger logger) 
+            : base(localEndpoint, configuration, proxyFactory, logger)
         {
         }
 

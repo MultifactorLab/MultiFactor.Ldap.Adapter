@@ -36,7 +36,11 @@ namespace MultiFactor.Ldap.Adapter.Server
         private static readonly ConcurrentDictionary<string, string> _usersDn2Cn = new ConcurrentDictionary<string, string>();
         private static readonly ConcurrentDictionary<string, string> _usersCn2Dn = new ConcurrentDictionary<string, string>();
 
-        public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, Stream serverStream, ServiceConfiguration configuration, ClientConfiguration clientConfig, ILogger logger)
+        private readonly RandomWaiter _waiter;
+
+        public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, 
+            Stream serverStream, ServiceConfiguration configuration, ClientConfiguration clientConfig, 
+            ILogger logger)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
             _clientStream = clientStream ?? throw new ArgumentNullException(nameof(clientStream));
@@ -47,7 +51,8 @@ namespace MultiFactor.Ldap.Adapter.Server
             _clientConfig = clientConfig ?? throw new ArgumentNullException(nameof(clientConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _ldapService = new LdapService(logger);
+            _ldapService = new LdapService();
+            _waiter = RandomWaiterFactory.CreateWaiter(configuration);
         }
 
         public async Task Start()
@@ -199,6 +204,7 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                                     //return invalid creds response
                                     var responsePacket = InvalidCredentials(packet);
+                                    await _waiter.WaitSomeTimeAsync();
                                     var response = responsePacket.GetBytes();
 
                                     _logger.Debug("Sent invalid credential response for user '{user:l}' to {client}", _userName, _clientConnection.Client.RemoteEndPoint);
@@ -243,7 +249,7 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                         if (!bypass)
                         {
-                            if (LdapService.GetIdentityType(_userName) == IdentityType.DistinguishedName)   //user uses DN as login ;)
+                            if (IdentityTypeParser.Parse(_userName) == IdentityType.DistinguishedName)   //user uses DN as login ;)
                             {
                                 _userName = profile?.Uid ?? _userName;
                             }
@@ -255,6 +261,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                             {
                                 //return invalid creds response
                                 var responsePacket = InvalidCredentials(packet);
+                                await _waiter.WaitSomeTimeAsync();
                                 var response = responsePacket.GetBytes();
 
                                 _logger.Debug("Sent invalid credential response for user '{user:l}' to {client}", _userName, _clientConnection.Client.RemoteEndPoint);
