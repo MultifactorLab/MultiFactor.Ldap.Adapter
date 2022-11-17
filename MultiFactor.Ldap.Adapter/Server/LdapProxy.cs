@@ -282,6 +282,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                     {
                         //just log
                         var reason = bindResponse.ChildAttributes[2].GetValue<string>();
+                        await _waiter.WaitSomeTimeAsync();
                         _logger.Warning("Verification user '{user:l}' at {server} failed: {reason}", _userName, _serverConnection.Client.RemoteEndPoint, reason);
                     }
                 }
