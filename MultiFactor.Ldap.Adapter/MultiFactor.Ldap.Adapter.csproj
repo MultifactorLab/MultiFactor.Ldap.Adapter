@@ -132,6 +132,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Configuration\AuthenticatedClientCacheConfig.cs" />
     <Compile Include="Configuration\ClientConfiguration.cs" />
     <Compile Include="Configuration\ILdapServerConfig.cs" />
     <Compile Include="Configuration\LdapServerConfig.cs" />
@@ -166,6 +167,8 @@
     <Compile Include="Server\LdapServersFactory.cs" />
     <Compile Include="Server\LdapsServer.cs" />
     <Compile Include="Server\RemoteEndPoint.cs" />
+    <Compile Include="Services\Caching\AuthenticatedClient.cs" />
+    <Compile Include="Services\Caching\AuthenticatedClientCache.cs" />
     <Compile Include="Services\CertificateService.cs" />
     <Compile Include="Services\IdentityType.cs" />
     <Compile Include="Services\IdentityTypeParser.cs" />
@@ -187,7 +190,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\RandomWaiter.cs" />
-    <Compile Include="Services\RandomWaiterFactory.cs" />
     <Compile Include="Services\RequestFactory.cs" />
     <Compile Include="Syslog\JsonRfc3164Formatter.cs" />
     <Compile Include="Syslog\JsonRfc5424Formatter.cs" />

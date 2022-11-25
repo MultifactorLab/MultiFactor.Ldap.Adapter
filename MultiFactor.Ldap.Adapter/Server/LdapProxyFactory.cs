@@ -3,6 +3,7 @@
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
 using MultiFactor.Ldap.Adapter.Configuration;
+using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
 using System;
 using System.IO;
@@ -12,12 +13,14 @@ namespace MultiFactor.Ldap.Adapter.Server
 {
     public class LdapProxyFactory
     {
-        private readonly ServiceConfiguration _serviceConfiguration;
+        private readonly RandomWaiter _waiter;
+        private readonly MultiFactorApiClient _apiClient;
         private readonly ILogger _logger;
 
-        public LdapProxyFactory(ServiceConfiguration serviceConfiguration, ILogger logger)
+        public LdapProxyFactory(RandomWaiter waiter, MultiFactorApiClient apiClient, ILogger logger)
         {
-            _serviceConfiguration = serviceConfiguration ?? throw new ArgumentNullException(nameof(serviceConfiguration));
+            _waiter = waiter ?? throw new ArgumentNullException(nameof(waiter));
+            _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -27,8 +30,8 @@ namespace MultiFactor.Ldap.Adapter.Server
         {
             return new LdapProxy(clientConnection, clientStream, 
                 serverConnection, serverStream, 
-                _serviceConfiguration, 
                 clientConfig,
+                _waiter, _apiClient,
                 _logger);
         }
     }
