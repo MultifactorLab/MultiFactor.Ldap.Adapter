@@ -2,6 +2,7 @@
 using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Server;
 using MultiFactor.Ldap.Adapter.Services;
+using MultiFactor.Ldap.Adapter.Services.Caching;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -31,7 +32,10 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             services.AddSingleton(Log.Logger);
             services.AddSingleton<LdapProxyFactory>();
             services.AddSingleton<LdapServersFactory>();
+            services.AddSingleton(prov => new RandomWaiter(prov.GetRequiredService<ServiceConfiguration>().InvalidCredentialDelay));
             services.AddSingleton(prov => prov.GetRequiredService<LdapServersFactory>().CreateServers());
+            services.AddSingleton<AuthenticatedClientCache>();
+            services.AddSingleton<MultiFactorApiClient>();
 
             services.AddSingleton<AdapterService>();
         }

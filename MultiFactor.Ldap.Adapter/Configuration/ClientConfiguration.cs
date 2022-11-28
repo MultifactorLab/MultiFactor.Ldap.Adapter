@@ -22,8 +22,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             UserNameTransformRules = new List<UserNameTransformRulesElement>();
         }
 
-        #region general settings
-
         /// <summary>
         /// Friendly client name
         /// </summary>
@@ -71,9 +69,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         public IList<UserNameTransformRulesElement> UserNameTransformRules { get; set; }
 
 
-        #endregion
-
-        #region API settings
 
         /// <summary>
         /// Multifactor API KEY
@@ -85,7 +80,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// </summary>
         public string MultifactorApiSecret { get; set; }
 
-        #endregion
+        public AuthenticatedClientCacheConfig AuthenticationCacheLifetime { get; internal set; }
+
 
         public bool CheckUserGroups()
         {

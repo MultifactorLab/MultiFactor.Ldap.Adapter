@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using MultiFactor.Ldap.Adapter.Core;
 using NetTools;
 using Serilog;
 using System;
@@ -53,7 +54,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
         public ILdapServerConfig ServerConfig { get; private set; }
 
-        #region API settings
 
         /// <summary>
         /// Multifactor API URL
@@ -64,7 +64,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// </summary>
         public string ApiProxy { get; set; }
 
-        #endregion
 
         /// <summary>
         /// Logging level
@@ -78,8 +77,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
         public bool SingleClientMode { get; set; }
 
-
-        #region load config section
 
         /// <summary>
         /// Read and load settings from appSettings configuration section
@@ -279,6 +276,16 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 }
             }
 
+            try
+            {
+                configuration.AuthenticationCacheLifetime = AuthenticatedClientCacheConfig
+                    .Create(appSettings.Settings[Constants.Configuration.AuthenticationCacheLifetime]?.Value);
+            }
+            catch
+            {
+                throw new Exception($"Configuration error: Can't parse '{Constants.Configuration.AuthenticationCacheLifetime}' value");
+            }
+
             return configuration;
         }
 
@@ -301,9 +308,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             throw new FormatException($"Failed to parse {text} to IPEndPoint");
         }
 
-        #endregion
 
-        #region static members
 
         /// <summary>
         /// Windows service unit name
@@ -335,6 +340,5 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             return appSettings?["logging-format"];
         }
 
-        #endregion
     }
 }

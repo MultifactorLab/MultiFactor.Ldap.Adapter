@@ -23,8 +23,8 @@ namespace MultiFactor.Ldap.Adapter.Server
         private TcpClient _serverConnection;
         private Stream _clientStream;
         private Stream _serverStream;
-        private ServiceConfiguration _configuration;
         private ClientConfiguration _clientConfig;
+        private readonly MultiFactorApiClient _apiClient;
         private ILogger _logger;
         private string _userName;
         private string _lookupUserName;
@@ -39,7 +39,9 @@ namespace MultiFactor.Ldap.Adapter.Server
         private readonly RandomWaiter _waiter;
 
         public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, 
-            Stream serverStream, ServiceConfiguration configuration, ClientConfiguration clientConfig, 
+            Stream serverStream, ClientConfiguration clientConfig,
+            RandomWaiter waiter,
+            MultiFactorApiClient apiClient,
             ILogger logger)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
@@ -47,12 +49,12 @@ namespace MultiFactor.Ldap.Adapter.Server
             _serverConnection = serverConnection ?? throw new ArgumentNullException(nameof(serverConnection));
             _serverStream = serverStream ?? throw new ArgumentNullException(nameof(serverStream));
 
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _clientConfig = clientConfig ?? throw new ArgumentNullException(nameof(clientConfig));
+            _waiter = waiter ?? throw new ArgumentNullException(nameof(waiter));
+            _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _ldapService = new LdapService();
-            _waiter = RandomWaiterFactory.CreateWaiter(configuration);
         }
 
         public async Task Start()
@@ -254,8 +256,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                                 _userName = profile?.Uid ?? _userName;
                             }
 
-                            var apiClient = new MultiFactorApiClient(_configuration, _logger);
-                            var result = await apiClient.Authenticate(_clientConfig, _userName); //second factor
+                            var result = await _apiClient.Authenticate(new ConnectedClientInfo(_userName, _clientConfig)); //second factor
 
                             if (!result) // second factor failed
                             {
