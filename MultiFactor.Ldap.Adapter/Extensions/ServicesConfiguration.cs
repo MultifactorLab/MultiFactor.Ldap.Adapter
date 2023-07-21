@@ -88,8 +88,17 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             }
             else
             {
-                logger.Debug($"Loading certificate for TLS from {certPath}");
-                configuration.X509Certificate = new X509Certificate2(certPath);
+                if (!string.IsNullOrEmpty(configuration.CertificatePassword))
+                {
+                    logger.Debug($"Loading certificate for TLS from {certPath} with CertificatePassword XXX");
+                    configuration.X509Certificate = new X509Certificate2(certPath, configuration.CertificatePassword);
+                }
+                else
+                {
+                    logger.Debug($"Loading certificate for TLS from {certPath}");
+                    configuration.X509Certificate = new X509Certificate2(certPath);
+                }
+
 
             }
         }
