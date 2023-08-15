@@ -75,6 +75,11 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// </summary>
         public X509Certificate2 X509Certificate { get; set; }
 
+        /// <summary>
+        /// Certificate Password
+        /// </summary>
+        public string CertificatePassword { get; set; }
+
         public bool SingleClientMode { get; set; }
 
 
@@ -91,7 +96,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var apiUrlSetting = appSettings.Settings["multifactor-api-url"]?.Value;
             var apiProxySetting = appSettings.Settings["multifactor-api-proxy"]?.Value;
             var logLevelSetting = appSettings.Settings["logging-level"]?.Value;
-
+            var certificatePassword = appSettings.Settings["certificate-password"]?.Value;
 
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
@@ -115,6 +120,11 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 throw new Exception("Configuration error: Neither 'adapter-ldap-endpoint' or 'adapter-ldaps-endpoint' configured");
             }
             configuration.ServerConfig = ldapServerConfig;
+
+            if (!string.IsNullOrEmpty(certificatePassword))
+            {
+                configuration.CertificatePassword = certificatePassword;
+            }
 
             try
             {
