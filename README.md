@@ -96,6 +96,8 @@ The component's parameters are stored in ```MultiFactor.Ldap.Adapter.exe.config`
 
 <!-- Logging level: 'Debug', 'Info', 'Warn', 'Error' -->
 <add key="logging-level" value="Debug"/>
+<!--certificate password leave empty or null for certificate without password-->
+<!--<add key="certificate-password" value="XXXXXX"/>-->
 ```
 
 ## Start-Up
