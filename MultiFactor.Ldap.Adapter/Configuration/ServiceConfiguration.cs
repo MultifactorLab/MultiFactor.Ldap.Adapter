@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 
 namespace MultiFactor.Ldap.Adapter.Configuration
 {
@@ -59,11 +60,17 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// Multifactor API URL
         /// </summary>
         public string ApiUrl { get; set; }
+
         /// <summary>
         /// HTTP Proxy for API
         /// </summary>
         public string ApiProxy { get; set; }
 
+
+        /// <summary>
+        /// HTTP timeout for Multifactor requests
+        /// </summary>
+        public TimeSpan ApiTimeout{ get; set; }
 
         /// <summary>
         /// Logging level
@@ -82,7 +89,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
         public bool SingleClientMode { get; set; }
 
-
         /// <summary>
         /// Read and load settings from appSettings configuration section
         /// </summary>
@@ -95,6 +101,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
             var apiUrlSetting = appSettings.Settings["multifactor-api-url"]?.Value;
             var apiProxySetting = appSettings.Settings["multifactor-api-proxy"]?.Value;
+            var apiTimeoutSetting = appSettings.Settings["multifactor-api-timeout"]?.Value;
             var logLevelSetting = appSettings.Settings["logging-level"]?.Value;
             var certificatePassword = appSettings.Settings["certificate-password"]?.Value;
 
@@ -102,6 +109,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 throw new Exception("Configuration error: 'multifactor-api-url' element not found");
             }
+            TimeSpan apiTimeout = ParseHttpTimeout(apiTimeoutSetting);
             if (string.IsNullOrEmpty(logLevelSetting))
             {
                 throw new Exception("Configuration error: 'logging-level' element not found");
@@ -111,6 +119,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 ApiUrl = apiUrlSetting,
                 ApiProxy = apiProxySetting,
+                ApiTimeout = apiTimeout,
                 LogLevel = logLevelSetting,
             };
 
@@ -141,11 +150,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             if (clientConfigFiles.Length == 0)
             {
                 //check if we have anything
-                var ldapServer = appSettings.Settings["ldap-server"]?.Value;
-                if (ldapServer == null)
-                {
-                    throw new ConfigurationErrorsException("No clients' config files found. Use one of the *.template files in the /clients folder to customize settings. Then save this file as *.config.");
-                }
+                _ = (appSettings.Settings["ldap-server"]?.Value)
+                    ?? throw new ConfigurationErrorsException("No clients' config files found. Use one of the *.template files in the /clients folder to customize settings. Then save this file as *.config.");
 
                 var userNameTransformRulesSection = ConfigurationManager.GetSection("UserNameTransformRules") as UserNameTransformRulesSection;
 
@@ -159,8 +165,10 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 {
                     logger.Information($"Loading client configuration from {Path.GetFileName(clientConfigFile)}");
 
-                    var customConfigFileMap = new ExeConfigurationFileMap();
-                    customConfigFileMap.ExeConfigFilename = clientConfigFile;
+                    var customConfigFileMap = new ExeConfigurationFileMap
+                    {
+                        ExeConfigFilename = clientConfigFile
+                    };
 
                     var config = ConfigurationManager.OpenMappedExeConfiguration(customConfigFileMap, ConfigurationUserLevel.None);
                     var clientSettings = (AppSettingsSection)config.GetSection("appSettings");
@@ -299,12 +307,25 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             return configuration;
         }
 
+        private static TimeSpan ParseHttpTimeout(string mfTimeoutSetting)
+        {
+            TimeSpan _minimalApiTimeout = TimeSpan.FromSeconds(65);
+
+            if (!TimeSpan.TryParseExact(mfTimeoutSetting, @"hh\:mm\:ss", null, System.Globalization.TimeSpanStyles.None, out var httpRequestTimeout))
+                return _minimalApiTimeout;
+
+            return httpRequestTimeout == TimeSpan.Zero ?
+                Timeout.InfiniteTimeSpan // infinity timeout
+                : httpRequestTimeout < _minimalApiTimeout
+                    ? _minimalApiTimeout  // minimal timeout
+                    : httpRequestTimeout; // timeout from config
+        }
+
         private static bool TryParseIPEndPoint(string text, out IPEndPoint ipEndPoint)
         {
-            Uri uri;
             ipEndPoint = null;
 
-            if (Uri.TryCreate(string.Concat("tcp://", text), UriKind.Absolute, out uri))
+            if (Uri.TryCreate(string.Concat("tcp://", text), UriKind.Absolute, out Uri uri))
             {
                 ipEndPoint = new IPEndPoint(IPAddress.Parse(uri.Host), uri.Port < 0 ? 0 : uri.Port);
                 return true;

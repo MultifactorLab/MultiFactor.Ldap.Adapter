@@ -85,6 +85,8 @@ Linux-версия компонента доступна в репозитори
 
 <!--Адрес API Мультифактора -->
 <add key="multifactor-api-url" value="https://api.multifactor.ru"/>
+<!--Таймаут запросов в API Мультифактора минимальное значение 65 секунд -->
+<add key="multifactor-api-timeout" value="00:01:05"/>
 <!-- Параметр NAS-Identifier для подключения к API Мультифактора - из личного кабинета -->
 <add key="multifactor-nas-identifier" value=""/>
 <!-- Параметр Shared Secret для подключения к API Мультифактора - из личного кабинета -->

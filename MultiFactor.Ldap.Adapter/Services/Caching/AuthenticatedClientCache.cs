@@ -31,7 +31,7 @@ namespace MultiFactor.Ldap.Adapter.Services.Caching
                 return false;
             }
 
-            _logger.Debug($"User {userName} authenticated {authenticatedClient.Elapsed.ToString("hh\\:mm\\:ss")} ago. Authentication session period: {clientConfiguration.AuthenticationCacheLifetime.Lifetime}");
+            _logger.Debug($"User {userName} authenticated {authenticatedClient.Elapsed:hh\\:mm\\:ss} ago. Authentication session period: {clientConfiguration.AuthenticationCacheLifetime.Lifetime}");
 
             if (authenticatedClient.Elapsed <= clientConfiguration.AuthenticationCacheLifetime.Lifetime)
             {
