@@ -13,7 +13,7 @@ using System.Net.Sockets;
 
 namespace MultiFactor.Ldap.Adapter.Extensions
 {
-    public static class LoggingConfiguration
+    public static class LoggerConfigurationExtensions
     {
         public static LoggerConfiguration ConfigureConsoleLogging(this LoggerConfiguration loggerConfiguration)
         {

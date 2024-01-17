@@ -6,14 +6,50 @@ using MultiFactor.Ldap.Adapter.Services.Caching;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using System;
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
 
 namespace MultiFactor.Ldap.Adapter.Extensions
 {
-    public static class ServicesConfiguration
+    public static class ServiceCollectionExtensions
     {
+        /// <summary>
+        /// Добавляет HttpClient с прокси, если это задано в настройках.
+        /// </summary>
+        /// <param name="services"></param>
+        /// <param name="configuration"></param>
+        public static void AddHttpClientWithProxy(this IServiceCollection services)
+        {
+            var serviceProvider = services.BuildServiceProvider();
+            var logger = serviceProvider.GetRequiredService<ILogger>();
+            var conf = serviceProvider.GetService<ServiceConfiguration>();
+            services.AddHttpContextAccessor();
+            services.AddTransient<MfTraceIdHeaderSetter>();
+
+            services.AddHttpClient(nameof(MultiFactorApiClient), client =>
+            {
+                client.Timeout = conf.ApiTimeout;
+            })
+            .ConfigurePrimaryHttpMessageHandler(prov =>
+            {
+                var handler = new HttpClientHandler();
+
+                if (string.IsNullOrWhiteSpace(conf.ApiProxy)) return handler;
+                logger.Debug("Using proxy " + conf.ApiProxy);
+                if (!WebProxyFactory.TryCreateWebProxy(conf.ApiProxy, out var webProxy))
+                {
+                    throw new Exception("Unable to initialize WebProxy. Please, check whether multifactor-api-proxy URI is valid.");
+                }
+                handler.Proxy = webProxy;
+
+                return handler;
+            })
+            .AddHttpMessageHandler<MfTraceIdHeaderSetter>();
+        }
+
         public static void ConfigureApplicationServices(this IServiceCollection services, LoggingLevelSwitch levelSwitch, string syslogInfoMessage)
         {
             var configuration = ServiceConfiguration.Load(Log.Logger);
@@ -36,27 +72,18 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             services.AddSingleton(prov => prov.GetRequiredService<LdapServersFactory>().CreateServers());
             services.AddSingleton<AuthenticatedClientCache>();
             services.AddSingleton<MultiFactorApiClient>();
+            services.AddHttpClientWithProxy();
 
             services.AddSingleton<AdapterService>();
         }
 
         private static void SetLogLevel(string level, LoggingLevelSwitch levelSwitch)
         {
-            switch (level)
+            if (!Enum.TryParse<LogEventLevel>(level, out var logLevel))
             {
-                case "Debug":
-                    levelSwitch.MinimumLevel = LogEventLevel.Debug;
-                    break;
-                case "Info":
-                    levelSwitch.MinimumLevel = LogEventLevel.Information;
-                    break;
-                case "Warn":
-                    levelSwitch.MinimumLevel = LogEventLevel.Warning;
-                    break;
-                case "Error":
-                    levelSwitch.MinimumLevel = LogEventLevel.Error;
-                    break;
+                logLevel = LogEventLevel.Information;
             }
+            levelSwitch.MinimumLevel = logLevel;
 
             Log.Logger.Information($"Logging level: {levelSwitch.MinimumLevel}");
         }
@@ -98,8 +125,6 @@ namespace MultiFactor.Ldap.Adapter.Extensions
                     logger.Debug($"Loading certificate for TLS from {certPath}");
                     configuration.X509Certificate = new X509Certificate2(certPath);
                 }
-
-
             }
         }
     }
