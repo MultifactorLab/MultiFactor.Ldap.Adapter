@@ -57,9 +57,9 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
 
         /// <summary>
-        /// Multifactor API URL
+        /// Multifactor API URLs
         /// </summary>
-        public string ApiUrl { get; set; }
+        public List<string> ApiUrls { get; set; }
 
         /// <summary>
         /// HTTP Proxy for API
@@ -105,10 +105,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var logLevelSetting = appSettings.Settings["logging-level"]?.Value;
             var certificatePassword = appSettings.Settings["certificate-password"]?.Value;
 
-            if (string.IsNullOrEmpty(apiUrlSetting))
-            {
-                throw new Exception("Configuration error: 'multifactor-api-url' element not found");
-            }
+            List<string> apiUrls = ParseApiUrls(apiUrlSetting);
             TimeSpan apiTimeout = ParseHttpTimeout(apiTimeoutSetting);
             if (string.IsNullOrEmpty(logLevelSetting))
             {
@@ -117,7 +114,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
             var configuration = new ServiceConfiguration
             {
-                ApiUrl = apiUrlSetting,
+                ApiUrls = apiUrls,
                 ApiProxy = apiProxySetting,
                 ApiTimeout = apiTimeout,
                 LogLevel = logLevelSetting,
@@ -305,6 +302,21 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             }
 
             return configuration;
+        }
+
+        private static List<string> ParseApiUrls(string apiUrlSetting)
+        {
+            if (string.IsNullOrEmpty(apiUrlSetting))
+            {
+                throw new Exception("Configuration error: 'multifactor-api-url' element not found");
+            }
+            var apiUrls = apiUrlSetting.Split(new char[] { ';' }, 3, StringSplitOptions.RemoveEmptyEntries).ToList();
+            if (apiUrls.Count == 0)
+            {
+                throw new Exception("Configuration error: 'multifactor-api-url' element not found. Make sure that you use ';' as a separator");
+            }
+
+            return apiUrls;
         }
 
         private static TimeSpan ParseHttpTimeout(string mfTimeoutSetting)

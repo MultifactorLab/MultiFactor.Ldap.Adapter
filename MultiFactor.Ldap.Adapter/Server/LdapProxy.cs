@@ -19,17 +19,17 @@ namespace MultiFactor.Ldap.Adapter.Server
 {
     public class LdapProxy
     {
-        private TcpClient _clientConnection;
-        private TcpClient _serverConnection;
-        private Stream _clientStream;
-        private Stream _serverStream;
-        private ClientConfiguration _clientConfig;
-        private readonly MultiFactorApiClient _apiClient;
-        private ILogger _logger;
+        private readonly TcpClient _clientConnection;
+        private readonly TcpClient _serverConnection;
+        private readonly Stream _clientStream;
+        private readonly Stream _serverStream;
+        private readonly ClientConfiguration _clientConfig;
+        private readonly SecondFactorVerifier _secondFacrotVerifier;
+        private readonly ILogger _logger;
         private string _userName;
         private string _lookupUserName;
 
-        private LdapService _ldapService;
+        private readonly LdapService _ldapService;
 
         private LdapProxyAuthenticationStatus _status;
 
@@ -38,10 +38,14 @@ namespace MultiFactor.Ldap.Adapter.Server
 
         private readonly RandomWaiter _waiter;
 
-        public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, 
-            Stream serverStream, ClientConfiguration clientConfig,
+        public LdapProxy(
+            TcpClient clientConnection, 
+            Stream clientStream, 
+            TcpClient serverConnection, 
+            Stream serverStream, 
+            ClientConfiguration clientConfig,
             RandomWaiter waiter,
-            MultiFactorApiClient apiClient,
+            SecondFactorVerifier apiClient,
             ILogger logger)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
@@ -51,7 +55,7 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             _clientConfig = clientConfig ?? throw new ArgumentNullException(nameof(clientConfig));
             _waiter = waiter ?? throw new ArgumentNullException(nameof(waiter));
-            _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _secondFacrotVerifier = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _ldapService = new LdapService();
@@ -256,7 +260,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                                 _userName = profile?.Uid ?? _userName;
                             }
 
-                            var result = await _apiClient.Authenticate(new ConnectedClientInfo(_userName, _clientConfig)); //second factor
+                            var result = await _secondFacrotVerifier.Authenticate(new ConnectedClientInfo(_userName, _clientConfig));
 
                             if (!result) // second factor failed
                             {
