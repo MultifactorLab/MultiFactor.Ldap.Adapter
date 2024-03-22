@@ -212,6 +212,7 @@
     <Compile Include="Core\Utils.cs" />
     <Compile Include="Extensions\LoggerConfigurationExtensions.cs" />
     <Compile Include="Extensions\ServiceCollectionExtensions.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorIdentityDto.cs" />
     <Compile Include="Server\Authentication\DigestMd5BindAuthentication.cs" />
     <Compile Include="Server\Authentication\NtlmBindAuthentication.cs" />
     <Compile Include="Server\Authentication\SpnegoNtlmBindAuthentication.cs" />
@@ -226,12 +227,14 @@
     <Compile Include="Services\Caching\AuthenticatedClient.cs" />
     <Compile Include="Services\Caching\AuthenticatedClientCache.cs" />
     <Compile Include="Services\CertificateService.cs" />
+    <Compile Include="Services\SecondFactor\ConnectedClientInfo.cs" />
     <Compile Include="Services\IdentityType.cs" />
     <Compile Include="Services\IdentityTypeParser.cs" />
     <Compile Include="Services\LdapProfile.cs" />
     <Compile Include="Services\LdapService.cs" />
-    <Compile Include="Services\MfTraceIdHeaderSetter.cs" />
-    <Compile Include="Services\MultiFactorApiClient.cs" />
+    <Compile Include="Services\MultiFactorApi\MfTraceIdHeaderSetter.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorAccessResponse.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorApiClient.cs" />
     <Compile Include="ServiceInstaller.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -246,8 +249,11 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorApiResponse.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorAccessRequest.cs" />
     <Compile Include="Services\RandomWaiter.cs" />
     <Compile Include="Services\RequestFactory.cs" />
+    <Compile Include="Services\SecondFactor\SecondFactorVerifier.cs" />
     <Compile Include="Services\WebProxyFactory.cs" />
     <Compile Include="Syslog\JsonRfc3164Formatter.cs" />
     <Compile Include="Syslog\JsonRfc5424Formatter.cs" />

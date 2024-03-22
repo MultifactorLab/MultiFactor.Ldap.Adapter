@@ -4,7 +4,7 @@ namespace MultiFactor.Ldap.Adapter.Services
 {
     /// <summary>
     /// The request factory with message ID counter.
-    /// Иefore each creation of the request the counter is incremented.
+    /// Before each creation of the request the counter is incremented.
     /// </summary>
     public class RequestFactory
     {

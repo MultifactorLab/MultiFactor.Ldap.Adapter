@@ -70,6 +70,7 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             services.AddSingleton<LdapServersFactory>();
             services.AddSingleton(prov => new RandomWaiter(prov.GetRequiredService<ServiceConfiguration>().InvalidCredentialDelay));
             services.AddSingleton(prov => prov.GetRequiredService<LdapServersFactory>().CreateServers());
+            services.AddSingleton<SecondFactorVerifier>();
             services.AddSingleton<AuthenticatedClientCache>();
             services.AddSingleton<MultiFactorApiClient>();
             services.AddHttpClientWithProxy();
