@@ -1,4 +1,4 @@
-﻿namespace MultiFactor.Ldap.Adapter.Models
+﻿namespace MultiFactor.Ldap.Adapter.Services.MultiFactorApi
 {
     public class MultiFactorIdentityDto
     {

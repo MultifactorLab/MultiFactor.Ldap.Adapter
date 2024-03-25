@@ -3,6 +3,8 @@ using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Server;
 using MultiFactor.Ldap.Adapter.Services;
 using MultiFactor.Ldap.Adapter.Services.Caching;
+using MultiFactor.Ldap.Adapter.Services.MultiFactorApi;
+using MultiFactor.Ldap.Adapter.Services.SecondFactor;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;

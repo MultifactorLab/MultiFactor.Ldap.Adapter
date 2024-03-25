@@ -2,7 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
-namespace MultiFactor.Ldap.Adapter.Services
+namespace MultiFactor.Ldap.Adapter.Services.MultiFactorApi
 {
     public class MultiFactorApiResponse<TModel>
     {

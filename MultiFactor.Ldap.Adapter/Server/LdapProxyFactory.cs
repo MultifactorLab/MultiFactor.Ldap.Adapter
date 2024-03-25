@@ -4,6 +4,7 @@
 
 using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Services;
+using MultiFactor.Ldap.Adapter.Services.SecondFactor;
 using Serilog;
 using System;
 using System.IO;
@@ -14,13 +15,13 @@ namespace MultiFactor.Ldap.Adapter.Server
     public class LdapProxyFactory
     {
         private readonly RandomWaiter _waiter;
-        private readonly SecondFactorVerifier _apiClient;
+        private readonly SecondFactorVerifier _secondFactorVerifier;
         private readonly ILogger _logger;
 
-        public LdapProxyFactory(RandomWaiter waiter, SecondFactorVerifier apiClient, ILogger logger)
+        public LdapProxyFactory(RandomWaiter waiter, SecondFactorVerifier secondFactorVerifier, ILogger logger)
         {
             _waiter = waiter ?? throw new ArgumentNullException(nameof(waiter));
-            _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _secondFactorVerifier = secondFactorVerifier ?? throw new ArgumentNullException(nameof(secondFactorVerifier));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -31,7 +32,8 @@ namespace MultiFactor.Ldap.Adapter.Server
             return new LdapProxy(clientConnection, clientStream, 
                 serverConnection, serverStream, 
                 clientConfig,
-                _waiter, _apiClient,
+                _waiter,
+                _secondFactorVerifier,
                 _logger);
         }
     }

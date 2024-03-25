@@ -119,9 +119,6 @@
     <Reference Include="Microsoft.Net.Http.Headers, Version=2.2.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Net.Http.Headers.2.2.0\lib\netstandard2.0\Microsoft.Net.Http.Headers.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
       <HintPath>..\packages\Serilog.2.10.0\lib\net46\Serilog.dll</HintPath>
     </Reference>
@@ -212,7 +209,6 @@
     <Compile Include="Core\Utils.cs" />
     <Compile Include="Extensions\LoggerConfigurationExtensions.cs" />
     <Compile Include="Extensions\ServiceCollectionExtensions.cs" />
-    <Compile Include="Services\MultiFactorApi\MultiFactorIdentityDto.cs" />
     <Compile Include="Server\Authentication\DigestMd5BindAuthentication.cs" />
     <Compile Include="Server\Authentication\NtlmBindAuthentication.cs" />
     <Compile Include="Server\Authentication\SpnegoNtlmBindAuthentication.cs" />
@@ -227,6 +223,7 @@
     <Compile Include="Services\Caching\AuthenticatedClient.cs" />
     <Compile Include="Services\Caching\AuthenticatedClientCache.cs" />
     <Compile Include="Services\CertificateService.cs" />
+    <Compile Include="Services\MultiFactorApi\MultiFactorIdentityDto.cs" />
     <Compile Include="Services\SecondFactor\ConnectedClientInfo.cs" />
     <Compile Include="Services\IdentityType.cs" />
     <Compile Include="Services\IdentityTypeParser.cs" />

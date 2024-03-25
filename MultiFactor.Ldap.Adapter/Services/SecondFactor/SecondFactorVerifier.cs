@@ -1,11 +1,12 @@
 ﻿using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Services.Caching;
+using MultiFactor.Ldap.Adapter.Services.MultiFactorApi;
 using Serilog;
 using System;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MultiFactor.Ldap.Adapter.Services
+namespace MultiFactor.Ldap.Adapter.Services.SecondFactor
 {
     public class SecondFactorVerifier
     {

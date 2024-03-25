@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace MultiFactor.Ldap.Adapter.Services
+namespace MultiFactor.Ldap.Adapter.Services.MultiFactorApi
 {
     public class MultiFactorAccessRequest
     {

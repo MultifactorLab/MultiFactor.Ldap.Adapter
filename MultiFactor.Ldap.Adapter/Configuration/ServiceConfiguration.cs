@@ -310,10 +310,10 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 throw new Exception("Configuration error: 'multifactor-api-url' element not found");
             }
-            var apiUrls = apiUrlSetting.Split(new char[] { ';' }, 3, StringSplitOptions.RemoveEmptyEntries).ToList();
+            var apiUrls = apiUrlSetting.Split(new char[] { ';' }, 5, StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
             if (apiUrls.Count == 0)
             {
-                throw new Exception("Configuration error: 'multifactor-api-url' element not found. Make sure that you use ';' as a separator");
+                throw new Exception("Configuration error: unable to read 'multifactor-api-url'. Make sure that you use ';' as a separator");
             }
 
             return apiUrls;

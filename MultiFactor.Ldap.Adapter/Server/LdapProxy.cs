@@ -6,6 +6,7 @@ using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
 using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;
+using MultiFactor.Ldap.Adapter.Services.SecondFactor;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -24,7 +25,7 @@ namespace MultiFactor.Ldap.Adapter.Server
         private readonly Stream _clientStream;
         private readonly Stream _serverStream;
         private readonly ClientConfiguration _clientConfig;
-        private readonly SecondFactorVerifier _secondFacrotVerifier;
+        private readonly SecondFactorVerifier _secondFactorVerifier;
         private readonly ILogger _logger;
         private string _userName;
         private string _lookupUserName;
@@ -45,7 +46,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             Stream serverStream, 
             ClientConfiguration clientConfig,
             RandomWaiter waiter,
-            SecondFactorVerifier apiClient,
+            SecondFactorVerifier secondFactorVerifier,
             ILogger logger)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
@@ -55,7 +56,7 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             _clientConfig = clientConfig ?? throw new ArgumentNullException(nameof(clientConfig));
             _waiter = waiter ?? throw new ArgumentNullException(nameof(waiter));
-            _secondFacrotVerifier = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
+            _secondFactorVerifier = secondFactorVerifier ?? throw new ArgumentNullException(nameof(secondFactorVerifier));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _ldapService = new LdapService();
@@ -260,7 +261,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                                 _userName = profile?.Uid ?? _userName;
                             }
 
-                            var result = await _secondFacrotVerifier.Authenticate(new ConnectedClientInfo(_userName, _clientConfig));
+                            var result = await _secondFactorVerifier.Authenticate(new ConnectedClientInfo(_userName, _clientConfig));
 
                             if (!result) // second factor failed
                             {

@@ -6,7 +6,7 @@
 using MultiFactor.Ldap.Adapter.Configuration;
 using System;
 
-namespace MultiFactor.Ldap.Adapter.Services
+namespace MultiFactor.Ldap.Adapter.Services.SecondFactor
 {
     public class ConnectedClientInfo
     {
