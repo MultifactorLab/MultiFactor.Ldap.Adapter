@@ -2,7 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
-using MultiFactor.Ldap.Adapter.Core.NameResolve;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using System.Collections.Generic;
 using System.Linq;
 

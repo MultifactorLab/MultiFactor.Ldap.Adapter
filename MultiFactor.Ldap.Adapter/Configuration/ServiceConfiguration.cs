@@ -3,7 +3,7 @@
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
 using MultiFactor.Ldap.Adapter.Core;
-using MultiFactor.Ldap.Adapter.Core.NameResolve;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using NetTools;
 using Serilog;
 using System;

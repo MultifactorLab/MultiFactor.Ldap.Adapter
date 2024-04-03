@@ -4,7 +4,7 @@
 
 using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
-using MultiFactor.Ldap.Adapter.Core.NameResolve;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;

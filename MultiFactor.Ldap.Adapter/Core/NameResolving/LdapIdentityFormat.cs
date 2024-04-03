@@ -1,4 +1,4 @@
-﻿namespace MultiFactor.Ldap.Adapter.Core.NameResolve
+﻿namespace MultiFactor.Ldap.Adapter.Core.NameResolving
 {
     public enum LdapIdentityFormat
     {

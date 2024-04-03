@@ -2,7 +2,7 @@
 using MultiFactor.Ldap.Adapter.Core.NameResolving.NameTranslators;
 using Serilog;
 
-namespace MultiFactor.Ldap.Adapter.Core.NameResolve
+namespace MultiFactor.Ldap.Adapter.Core.NameResolving
 {
     public class NameResolverService
     {

@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace MultiFactor.Ldap.Adapter.Core.NameResolve
+namespace MultiFactor.Ldap.Adapter.Core.NameResolving
 {
     public class NameTypeDetector
     {
