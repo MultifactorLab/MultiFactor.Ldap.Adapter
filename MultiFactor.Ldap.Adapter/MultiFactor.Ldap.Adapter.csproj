@@ -206,6 +206,17 @@
     <Compile Include="Core\LdapPartialAttribute.cs" />
     <Compile Include="Core\LdapResult.cs" />
     <Compile Include="Core\LdapResultAttribute.cs" />
+    <Compile Include="Core\NameResolving\LdapIdentityFormat.cs" />
+    <Compile Include="Core\NameResolving\NameResolverContext.cs" />
+    <Compile Include="Core\NameResolving\NameResolverService.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\DistinguishedNameToUpnTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\INameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\NetbiosToUpnNameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\sAMAccountNameAndNetbiosToUpnNameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\sAMAccountNameToUpnNameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\UpnFromProfileNameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTypeDetector.cs" />
+    <Compile Include="Core\NameResolving\NetbiosDomainName.cs" />
     <Compile Include="Core\Tag.cs" />
     <Compile Include="Core\TagClass.cs" />
     <Compile Include="Core\UniversalDataType.cs" />

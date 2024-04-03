@@ -1,4 +1,6 @@
 ﻿using MultiFactor.Ldap.Adapter.Core;
+using System.Text.RegularExpressions;
+using System;
 
 namespace MultiFactor.Ldap.Adapter.Services
 {
@@ -109,6 +111,104 @@ namespace MultiFactor.Ldap.Adapter.Services
             attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "distinguishedName"));
 
             searchRequest.ChildAttributes.Add(attrList);
+
+            return packet;
+        }
+
+        public LdapPacket CreateGetPartitions(string baseDn)
+        {
+            var packet = new LdapPacket(_messageId++);
+
+            var searchRequest = new LdapAttribute(LdapOperation.SearchRequest);
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "CN=Partitions,CN=Configuration," + baseDn));    // base dn
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)2));    // scope: subtree
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)3));    // aliases: never
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (Int32)1000));     // size limit: 255
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (byte)60));      // time limit: 60
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Boolean, false));         //typesOnly: false
+
+            var and = new LdapAttribute((byte)LdapFilterChoice.and);
+
+            var eq1 = new LdapAttribute((byte)LdapFilterChoice.equalityMatch);
+            var present = new LdapAttribute((byte)LdapFilterChoice.present, "netbiosname");
+
+            and.ChildAttributes.Add(eq1);
+            and.ChildAttributes.Add(present);
+
+            searchRequest.ChildAttributes.Add(and);
+
+            eq1.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "objectcategory"));
+            eq1.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "crossref"));
+
+            packet.ChildAttributes.Add(searchRequest);
+
+            var attrList = new LdapAttribute(UniversalDataType.Sequence);
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "netbiosname"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "dnsRoot"));
+            searchRequest.ChildAttributes.Add(attrList);
+            return packet;
+        }
+
+
+        public LdapPacket CreateResolveProfileRequest(string name, string baseDn)
+        {
+            var packet = new LdapPacket(_messageId++);
+
+            var searchRequest = new LdapAttribute(LdapOperation.SearchRequest);
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, baseDn));    // base dn
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)2));    // scope: subtree
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)0));    // aliases: never
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (Int32)1000));     // size limit: 255
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (byte)60));      // time limit: 60
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Boolean, false));         //typesOnly: false
+
+            var and = new LdapAttribute((byte)LdapFilterChoice.and);
+            var or = new LdapAttribute((byte)LdapFilterChoice.or);
+
+            var sAMAccountNameEq = new LdapAttribute((byte)LdapFilterChoice.equalityMatch);
+            sAMAccountNameEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "sAMAccountName"));
+            var sAMAccountNameRegex = new Regex("@[^@]+$");
+            var netbiosRegex = new Regex(@"[^.]+\\");
+            sAMAccountNameEq.ChildAttributes.Add(
+                new LdapAttribute(UniversalDataType.OctetString,
+                        netbiosRegex.Replace(sAMAccountNameRegex.Replace(name, ""), ""))
+            );
+
+            var upnEq = new LdapAttribute((byte)LdapFilterChoice.equalityMatch);
+            upnEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "UserPrincipalName"));
+            upnEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, name));
+
+
+            var dnEq = new LdapAttribute((byte)LdapFilterChoice.equalityMatch);
+            dnEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "distinguishedName"));
+            dnEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, name));
+
+
+            or.ChildAttributes.Add(sAMAccountNameEq);
+            or.ChildAttributes.Add(upnEq);
+            or.ChildAttributes.Add(dnEq);
+
+            var objectClassEq = new LdapAttribute((byte)LdapFilterChoice.equalityMatch);
+
+            objectClassEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "objectClass"));
+            objectClassEq.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "user"));
+
+            and.ChildAttributes.Add(objectClassEq);
+            and.ChildAttributes.Add(or);
+
+            searchRequest.ChildAttributes.Add(and);
+
+            var attrList = new LdapAttribute(UniversalDataType.Sequence);
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "uid"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "sAMAccountName"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "UserPrincipalName"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "DisplayName"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "mail"));
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "memberOf"));
+
+            searchRequest.ChildAttributes.Add(attrList);
+
+            packet.ChildAttributes.Add(searchRequest);
 
             return packet;
         }
