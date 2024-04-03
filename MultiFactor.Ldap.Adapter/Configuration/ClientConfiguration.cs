@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,6 +21,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
 
             LoadActiveDirectoryNestedGroups = true;
             UserNameTransformRules = new List<UserNameTransformRulesElement>();
+            TransformLdapIdentity = LdapIdentityFormat.None;
         }
 
         /// <summary>
@@ -79,9 +81,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// API Secret
         /// </summary>
         public string MultifactorApiSecret { get; set; }
-
+        public LdapIdentityFormat TransformLdapIdentity { get; set; }
         public AuthenticatedClientCacheConfig AuthenticationCacheLifetime { get; internal set; }
-
 
         public bool CheckUserGroups()
         {

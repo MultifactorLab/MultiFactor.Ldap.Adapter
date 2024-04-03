@@ -4,6 +4,8 @@
 
 using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
@@ -37,12 +39,14 @@ namespace MultiFactor.Ldap.Adapter.Server
         private static readonly ConcurrentDictionary<string, string> _usersCn2Dn = new ConcurrentDictionary<string, string>();
 
         private readonly RandomWaiter _waiter;
+        private NameResolverService _nameResolverService;
 
         public LdapProxy(TcpClient clientConnection, Stream clientStream, TcpClient serverConnection, 
             Stream serverStream, ClientConfiguration clientConfig,
             RandomWaiter waiter,
             MultiFactorApiClient apiClient,
-            ILogger logger)
+            ILogger logger,
+            NameResolverService nameResolverService)
         {
             _clientConnection = clientConnection ?? throw new ArgumentNullException(nameof(clientConnection));
             _clientStream = clientStream ?? throw new ArgumentNullException(nameof(clientStream));
@@ -55,6 +59,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _ldapService = new LdapService();
+            _nameResolverService = nameResolverService;
         }
 
         public async Task Start()
@@ -177,7 +182,14 @@ namespace MultiFactor.Ldap.Adapter.Server
                         //apply login transformation rules if any
                         _userName = ProcessUserNameTransformRules();
 
-                        var profile = await _ldapService.LoadProfile(_serverStream, _userName);
+                        string baseDn = await _ldapService.GetBaseDn(_serverStream, _userName);
+
+                        if (_clientConfig.TransformLdapIdentity != LdapIdentityFormat.None)
+                        {
+                            _userName = await EnforceLdapIdentityFormat(baseDn, _clientConfig.TransformLdapIdentity);
+                        }
+
+                        var profile = await _ldapService.LoadProfile(_serverStream, baseDn, _userName);
 
                         if (_clientConfig.CheckUserGroups())
                         {
@@ -445,6 +457,30 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
 
             return userName;
+        }
+
+        private async Task<string> EnforceLdapIdentityFormat(string baseDn, LdapIdentityFormat loginFormat)
+        {
+            if (loginFormat == LdapIdentityFormat.None)
+            {
+                throw new ArgumentException("Incorrect identity format was passed");
+            }
+
+            _logger.Debug($"{_userName} username will be transformed to {_clientConfig.TransformLdapIdentity} format"); ;
+            var domains = await _ldapService.GetDomains(_serverStream, baseDn);
+            var matchedProfile = await _ldapService.ResolveProfile(_serverStream, baseDn,_userName);
+            if (matchedProfile == null)
+            {
+                _logger.Error($"{_userName} profile was not found, unable to translate the username");
+                return _userName;
+            }
+            var context = new NameResolverContext()
+            {
+                Domains = domains,
+                Profile = matchedProfile
+            };
+
+            return _nameResolverService.Resolve(context, _userName, loginFormat);
         }
 
     }

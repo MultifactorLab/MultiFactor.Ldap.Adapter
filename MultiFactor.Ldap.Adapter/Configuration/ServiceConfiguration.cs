@@ -3,6 +3,7 @@
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
 using MultiFactor.Ldap.Adapter.Core;
+using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using NetTools;
 using Serilog;
 using System;
@@ -104,7 +105,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var apiTimeoutSetting = appSettings.Settings["multifactor-api-timeout"]?.Value;
             var logLevelSetting = appSettings.Settings["logging-level"]?.Value;
             var certificatePassword = appSettings.Settings["certificate-password"]?.Value;
-
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
                 throw new Exception("Configuration error: 'multifactor-api-url' element not found");
@@ -209,7 +209,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var activeDirectory2FaBypassGroupSetting                = appSettings.Settings["active-directory-2fa-bypass-group"]?.Value;
             var bypassSecondFactorWhenApiUnreachableSetting         = appSettings.Settings["bypass-second-factor-when-api-unreachable"]?.Value;
             var loadActiveDirectoryNestedGroupsSettings             = appSettings.Settings["load-active-directory-nested-groups"]?.Value;
-
+            var transformLdapIdentity                               = appSettings.Settings["transform-ldap-identity"]?.Value;
 
             if (string.IsNullOrEmpty(ldapServerSetting))
             {
@@ -230,6 +230,9 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 LdapServer = ldapServerSetting,
                 MultifactorApiKey = multifactorApiKeySetting,
                 MultifactorApiSecret = multifactorApiSecretSetting,
+                TransformLdapIdentity = string.IsNullOrEmpty(transformLdapIdentity) 
+                    ? LdapIdentityFormat.None
+                    : (LdapIdentityFormat)Enum.Parse(typeof(LdapIdentityFormat), transformLdapIdentity, true)
             };
 
             if (!string.IsNullOrEmpty(serviceAccountsSetting))
