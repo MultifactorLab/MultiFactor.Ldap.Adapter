@@ -60,7 +60,7 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             {
                 Log.Logger.Information(syslogInfoMessage);
             }
-            if (configuration.ServerConfig.AdapterLdapEndpoint != null)
+            if (configuration.ServerConfig.AdapterLdapsEndpoint != null)
             {
                 GetOrCreateTlsCertificate(Core.Constants.ApplicationPath, configuration, Log.Logger);
             }
