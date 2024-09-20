@@ -9,7 +9,10 @@ using System.Configuration;
 using System;
 using System.Net;
 using System.Linq;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 
 namespace MultiFactor.Ldap.Adapter.Extensions
 {
@@ -57,7 +60,12 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             var sysLogFramerSetting = appSettings["syslog-framer"];
             var sysLogFacilitySetting = appSettings["syslog-facility"];
             var sysLogAppName = appSettings["syslog-app-name"] ?? "multifactor-ldap";
-
+            
+            if (!bool.TryParse(appSettings["syslog-use-tls"], out var sysLogUseTls))
+            {
+                sysLogUseTls = true;
+            }
+            
             var isJson = ServiceConfiguration.GetLogFormat() == "json";
 
             var facility = ParseSettingOrDefault(sysLogFacilitySetting, Facility.Auth);
@@ -79,13 +87,28 @@ namespace MultiFactor.Ldap.Adapter.Extensions
                         var serverIp = ResolveIP(uri.Host);
                         loggerConfiguration
                             .WriteTo
-                            .JsonUdpSyslog(serverIp, port: uri.Port, appName: sysLogAppName, format: format, facility: facility, json: isJson);
+                            .JsonUdpSyslog(
+                                host: serverIp,
+                                port: uri.Port,
+                                appName: sysLogAppName,
+                                format: format,
+                                facility: facility,
+                                json: isJson);
                         logMessage = $"Using syslog server: {sysLogServer}, format: {format}, facility: {facility}, appName: {sysLogAppName}";
                         break;
                     case "tcp":
                         loggerConfiguration
                             .WriteTo
-                            .JsonTcpSyslog(uri.Host, uri.Port, appName: sysLogAppName, format: format, framingType: framer, facility: facility, json: isJson);
+                            .JsonTcpSyslog(
+                                host: uri.Host,
+                                uri.Port,
+                                appName: sysLogAppName,
+                                format: format,
+                                framingType: framer,
+                                facility: facility,
+                                json: isJson,
+                                certValidationCallback: ValidateServerCertificate,
+                                secureProtocols: sysLogUseTls ? SslProtocols.Tls12 : SslProtocols.None);
                         logMessage = $"Using syslog server {sysLogServer}, format: {format}, framing: {framer}, facility: {facility}, appName: {sysLogAppName}";
                         break;
                     default:
@@ -130,6 +153,7 @@ namespace MultiFactor.Ldap.Adapter.Extensions
 
             return host;
         }
-
+        
+        private static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) => true;
     }
 }
