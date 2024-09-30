@@ -102,8 +102,8 @@ namespace MultiFactor.Ldap.Adapter.Server
                 foreach (var ldapServer in clientConfiguration.SplittedLdapServers)
                 {
                     var remoteEndPoint = ParseServerEndpoint(ldapServer.ToLower());
-                    var isSuccess = await ProcessRemoteEndPoint(remoteEndPoint, client, clientConfiguration);
-                    if (isSuccess)
+                    var isSuccessful = await ProcessRemoteEndPoint(remoteEndPoint, client, clientConfiguration);
+                    if (isSuccessful)
                         return;
                 }
             }
@@ -131,7 +131,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                         using (var clientStream = await GetClientStream(client))
                         {
                             var proxy = _ldapProxyFactory.CreateProxy(client, clientStream, serverConnection, serverStream, clientConfiguration);
-                            await proxy.PrecessDataExchange();
+                            await proxy.ProcessDataExchange();
                             return true;
                         }
                     }
