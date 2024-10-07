@@ -175,8 +175,6 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                     if (bound)  //first factor authenticated
                     {
-                        _logger.Information("User '{user:l}' credential verified successfully at {server}", _userName, _serverConnection.Client.RemoteEndPoint);
-
                         var bypass = false;
 
                         //apply login transformation rules if any
@@ -190,22 +188,21 @@ namespace MultiFactor.Ldap.Adapter.Server
                         }
 
                         var profile = await _ldapService.LoadProfile(_serverStream, baseDn, _userName);
-
+                        if (profile is null)
+                        {
+                            _logger.Error("User '{user:l}' not found. This is an unusual situation. Check the adapter settings", _userName);
+                            _status = LdapProxyAuthenticationStatus.AuthenticationFailed;
+                            var responsePacket = ProfileNotFound(packet);
+                            var response = responsePacket.GetBytes();
+                            return (response, response.Length);
+                        }
+                        
                         if (_clientConfig.CheckUserGroups())
                         {
-                            var profileLoaded = profile != null;
-
-                            if (!profileLoaded)
-                            {
-                                _logger.Error("User '{user:l}' not found. Can not check groups membership", _userName);
-                            }
-                            else
-                            {
-                                profile.MemberOf = await _ldapService.GetAllGroups(_serverStream, profile, _clientConfig);
-                            }
+                            profile.MemberOf = await _ldapService.GetAllGroups(_serverStream, profile, _clientConfig);
 
                             //check ACL
-                            if (profileLoaded && _clientConfig.ActiveDirectoryGroup.Any())
+                            if (_clientConfig.ActiveDirectoryGroup.Any())
                             {
                                 var accessGroup = _clientConfig.ActiveDirectoryGroup.FirstOrDefault(group => IsMemberOf(profile, group));
                                 if (accessGroup != null)
@@ -230,7 +227,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                             }
 
                             //check if mfa is mandatory
-                            if (profileLoaded && _clientConfig.ActiveDirectory2FaGroup.Any())
+                            if (_clientConfig.ActiveDirectory2FaGroup.Any())
                             {
                                 var mfaGroup = _clientConfig.ActiveDirectory2FaGroup.FirstOrDefault(group => IsMemberOf(profile, group));
                                 if (mfaGroup != null)
@@ -246,7 +243,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                             }
 
                             //check of mfa is not mandatory
-                            if (profileLoaded && _clientConfig.ActiveDirectory2FaBypassGroup.Any() && !bypass)
+                            if (_clientConfig.ActiveDirectory2FaBypassGroup.Any() && !bypass)
                             {
                                 var bypassGroup = _clientConfig.ActiveDirectory2FaBypassGroup.FirstOrDefault(group => IsMemberOf(profile, group));
                                 if (bypassGroup != null)
@@ -410,6 +407,13 @@ namespace MultiFactor.Ldap.Adapter.Server
         {
             var responsePacket = new LdapPacket(requestPacket.MessageId);
             responsePacket.ChildAttributes.Add(new LdapResultAttribute(LdapOperation.BindResponse, LdapResult.invalidCredentials));
+            return responsePacket;
+        }
+        
+        private LdapPacket ProfileNotFound(LdapPacket requestPacket)
+        {
+            var responsePacket = new LdapPacket(requestPacket.MessageId);
+            responsePacket.ChildAttributes.Add(new LdapResultAttribute(LdapOperation.BindResponse, LdapResult.noSuchObject));
             return responsePacket;
         }
 
