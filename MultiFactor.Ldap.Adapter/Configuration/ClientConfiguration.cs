@@ -38,7 +38,10 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// <summary>
         /// Array of ldap servers
         /// </summary>
-        public string[] SplittedLdapServers => LdapServer?.Split(new [] { ';' }, StringSplitOptions.RemoveEmptyEntries).Distinct().ToArray() ?? new string[0];
+        public string[] SplittedLdapServers => LdapServer
+            ?.Split(new [] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? Array.Empty<string>();
 
         /// <summary>
         /// Bypass second factor when MultiFactor API is unreachable
