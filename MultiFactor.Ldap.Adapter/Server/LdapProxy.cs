@@ -5,7 +5,6 @@
 using MultiFactor.Ldap.Adapter.Configuration;
 using MultiFactor.Ldap.Adapter.Core;
 using MultiFactor.Ldap.Adapter.Core.NameResolving;
-using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using MultiFactor.Ldap.Adapter.Server.Authentication;
 using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
@@ -62,7 +61,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             _nameResolverService = nameResolverService;
         }
 
-        public async Task Start()
+        public async Task ProcessDataExchange()
         {
             var from = _clientConnection.Client.RemoteEndPoint.ToString();
             var to = _serverConnection.Client.RemoteEndPoint.ToString();
