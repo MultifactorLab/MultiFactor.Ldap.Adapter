@@ -104,9 +104,9 @@ namespace MultiFactor.Ldap.Adapter.Server
                     var remoteEndPoint = ParseServerEndpoint(ldapServer.ToLower());
                     var isSuccessful = await ProcessRemoteEndPoint(remoteEndPoint, client, clientConfiguration);
                     if (isSuccessful)
-					{
+                    {
                         return;
-					}
+                    }
                 }
             }
             finally
