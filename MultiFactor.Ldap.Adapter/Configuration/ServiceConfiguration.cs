@@ -210,6 +210,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var bypassSecondFactorWhenApiUnreachableSetting         = appSettings.Settings["bypass-second-factor-when-api-unreachable"]?.Value;
             var loadActiveDirectoryNestedGroupsSettings             = appSettings.Settings["load-active-directory-nested-groups"]?.Value;
             var transformLdapIdentity                               = appSettings.Settings["transform-ldap-identity"]?.Value;
+            var ldapBindTimeout                                     = appSettings.Settings["ldap-bind-timeout"]?.Value;
 
             if (string.IsNullOrEmpty(ldapServerSetting))
             {
@@ -305,6 +306,14 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             catch
             {
                 throw new Exception($"Configuration error: Can't parse '{Constants.Configuration.AuthenticationCacheLifetime}' value");
+            }
+            
+            if (TimeSpan.TryParse(ldapBindTimeout, out var bindTimeout))
+            {
+                if (bindTimeout > TimeSpan.Zero)
+                {
+                    configuration.LdapBindTimeout = bindTimeout;
+                }
             }
 
             return configuration;

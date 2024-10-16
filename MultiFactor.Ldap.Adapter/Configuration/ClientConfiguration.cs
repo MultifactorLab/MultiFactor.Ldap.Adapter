@@ -93,6 +93,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         public LdapIdentityFormat TransformLdapIdentity { get; set; }
         public AuthenticatedClientCacheConfig AuthenticationCacheLifetime { get; internal set; }
 
+        public TimeSpan LdapBindTimeout { get; set; } = new TimeSpan(0, 0, 30);
+        
         public bool CheckUserGroups()
         {
             return

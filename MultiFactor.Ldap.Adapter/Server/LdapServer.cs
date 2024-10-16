@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MultiFactor.Ldap.Adapter.Server
@@ -74,7 +75,6 @@ namespace MultiFactor.Ldap.Adapter.Server
                 }
                 catch (ObjectDisposedException) //may be safetly ignored
                 {
-
                 }
                 catch (Exception ex)
                 {
@@ -92,11 +92,14 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             if (clientConfiguration == null)
             {
-                _logger.Warning("Received packet from unknown client {host:l}:{port}, closing", clientEndpoint.Address, clientEndpoint.Port);
+                _logger.Warning(
+                    "Received packet from unknown client {host:l}:{port}, closing",
+                    clientEndpoint.Address,
+                    clientEndpoint.Port);
                 client.Close();
                 return;
             }
-            
+
             try
             {
                 foreach (var ldapServer in clientConfiguration.SplittedLdapServers)
@@ -118,7 +121,8 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
         }
 
-        private async Task<bool> ProcessRemoteEndPoint(RemoteEndPoint remoteEndPoint, TcpClient client, ClientConfiguration clientConfiguration)
+        private async Task<bool> ProcessRemoteEndPoint(RemoteEndPoint remoteEndPoint, TcpClient client,
+            ClientConfiguration clientConfiguration)
         {
             try
             {
@@ -126,13 +130,20 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                 using (var serverConnection = new TcpClient())
                 {
-                    await serverConnection.ConnectAsync(serverEndpoint.Address, serverEndpoint.Port);
+                    await WaitTaskWithTimeout(
+                        serverConnection.ConnectAsync(serverEndpoint.Address, serverEndpoint.Port),
+                        clientConfiguration.LdapBindTimeout);
 
                     using (var serverStream = await GetServerStream(serverConnection, remoteEndPoint))
                     {
                         using (var clientStream = await GetClientStream(client))
                         {
-                            var proxy = _ldapProxyFactory.CreateProxy(client, clientStream, serverConnection, serverStream, clientConfiguration);
+                            var proxy = _ldapProxyFactory.CreateProxy(
+                                client,
+                                clientStream,
+                                serverConnection,
+                                serverStream,
+                                clientConfiguration);
                             await proxy.ProcessDataExchange();
                             return true;
                         }
@@ -143,11 +154,15 @@ namespace MultiFactor.Ldap.Adapter.Server
             {
                 _logger.Error(ex, $"Error while connecting client '{clientConfiguration.Name}' to {remoteEndPoint.Host}:{remoteEndPoint.Port}");
             }
-            
+
             return false;
         }
 
-        public static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        public static bool ValidateServerCertificate(
+            object sender,
+            X509Certificate certificate,
+            X509Chain chain,
+            SslPolicyErrors sslPolicyErrors)
         {
             return true;
         }
@@ -211,6 +226,24 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
 
             return serverStream;
+        }
+        
+        private static async Task WaitTaskWithTimeout(Task targetTask, TimeSpan timeout)
+        {
+            using (var timeoutCancellationTokenSource = new CancellationTokenSource())
+            using (var timeoutTask = Task.Delay(timeout, timeoutCancellationTokenSource.Token))
+            using (var completedTask = await Task.WhenAny(targetTask, timeoutTask))
+            {
+                if (completedTask == targetTask)
+                {
+                    timeoutCancellationTokenSource.Cancel();
+                    await targetTask;
+                }
+                else
+                {
+                    throw new TimeoutException("The operation timed out after " + timeout.TotalSeconds + " seconds");
+                }
+            }
         }
     }
 }
