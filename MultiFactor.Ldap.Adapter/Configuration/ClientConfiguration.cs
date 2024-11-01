@@ -2,6 +2,7 @@
 //Please see licence at 
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
+using System;
 using MultiFactor.Ldap.Adapter.Core.NameResolving;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,6 +34,14 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// LDAP server name or address
         /// </summary>
         public string LdapServer { get; set; }
+        
+        /// <summary>
+        /// Array of ldap servers
+        /// </summary>
+        public string[] SplittedLdapServers => LdapServer
+            ?.Split(new [] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray() ?? Array.Empty<string>();
 
         /// <summary>
         /// Bypass second factor when MultiFactor API is unreachable
@@ -84,6 +93,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         public LdapIdentityFormat TransformLdapIdentity { get; set; }
         public AuthenticatedClientCacheConfig AuthenticationCacheLifetime { get; internal set; }
 
+        public TimeSpan LdapBindTimeout { get; set; } = new TimeSpan(0, 0, 30);
+        
         public bool CheckUserGroups()
         {
             return
