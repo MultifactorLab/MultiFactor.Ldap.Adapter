@@ -211,7 +211,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var loadActiveDirectoryNestedGroupsSettings             = appSettings.Settings["load-active-directory-nested-groups"]?.Value;
             var transformLdapIdentity                               = appSettings.Settings["transform-ldap-identity"]?.Value;
             var ldapBindTimeout                                     = appSettings.Settings["ldap-bind-timeout"]?.Value;
-
+            var privacyMode                                         = appSettings.Settings["privacy-mode"]?.Value;
+            
             if (string.IsNullOrEmpty(ldapServerSetting))
             {
                 throw new Exception("Configuration error: 'ldap-server' element not found");
@@ -315,6 +316,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                     configuration.LdapBindTimeout = bindTimeout;
                 }
             }
+            
+            configuration.PrivacyModeDescriptor = PrivacyModeDescriptor.Create(privacyMode);
 
             return configuration;
         }

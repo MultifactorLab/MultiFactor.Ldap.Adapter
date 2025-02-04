@@ -102,5 +102,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 ActiveDirectory2FaGroup.Any() ||
                 ActiveDirectory2FaBypassGroup.Any();
         }
+        
+        public PrivacyModeDescriptor PrivacyModeDescriptor { get; set; }
     }
 }

@@ -55,7 +55,7 @@ namespace MultiFactor.Ldap.Adapter.Services
             };
         }
 
-        public async Task<bool> Authenticate(ConnectedClientInfo connectedClient)
+        public async Task<bool> Authenticate(ConnectedClientInfo connectedClient, PersonalData personalData)
         {
             //try to get authenticated client to bypass second factor if configured
             if (_clientCache.TryHitCache(connectedClient.Username, connectedClient.ClientConfiguration))
@@ -68,6 +68,7 @@ namespace MultiFactor.Ldap.Adapter.Services
             var payload = new
             {
                 Identity = connectedClient.Username,
+                Email = personalData.Email
             };
 
             var response = await SendRequest(connectedClient.ClientConfiguration, url, payload);
