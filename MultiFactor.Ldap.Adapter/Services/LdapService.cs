@@ -98,6 +98,7 @@ namespace MultiFactor.Ldap.Adapter.Services
                             case "userPrincipalName":
                                 profile.Upn = entry.Values.FirstOrDefault();
                                 break;
+                            case "email":
                             case "mail":
                                 profile.Email = entry.Values.FirstOrDefault();
                                 break;
