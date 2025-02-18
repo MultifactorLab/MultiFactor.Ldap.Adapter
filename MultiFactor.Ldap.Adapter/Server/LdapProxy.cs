@@ -264,7 +264,8 @@ namespace MultiFactor.Ldap.Adapter.Server
                                 _userName = profile?.Uid ?? _userName;
                             }
 
-                            var result = await _apiClient.Authenticate(new ConnectedClientInfo(_userName, _clientConfig)); //second factor
+                            var personalData = new PersonalData(profile, _clientConfig.PrivacyModeDescriptor);
+                            var result = await _apiClient.Authenticate(new ConnectedClientInfo(_userName, _clientConfig), personalData); //second factor
 
                             if (!result) // second factor failed
                             {
