@@ -113,9 +113,11 @@ namespace MultiFactor.Ldap.Adapter.Services
 
             foreach (var url in baseUrls.Select(baseUrl => $"{baseUrl}/access/requests/la"))
             {
+                _logger.Information("Sending request to API '{ApiUrl:l}'.", url);
                 try
                 {
-                    var res = await TrySendRequest(httpClient, json, url, auth);
+                    var message = PrepareHttpRequestMessage(json, url, auth);
+                    var res = await TrySendRequest(httpClient, message);
                     if (res == null)
                         continue;
 
@@ -154,24 +156,15 @@ namespace MultiFactor.Ldap.Adapter.Services
             return null;
         }
 
-        private async Task<HttpResponseMessage> TrySendRequest(HttpClient httpClient, string json, string url, string auth)
+        private async Task<HttpResponseMessage> TrySendRequest(HttpClient httpClient, HttpRequestMessage message)
         {
-            var policy = Policy
-                .Handle<HttpRequestException>()
-                .Or<TimeoutRejectedException>()
-                .WaitAndRetryAsync(1, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
             try
             {
-                return await policy.ExecuteAsync(() =>
-                {
-                    _logger.Information("Sending request to API '{ApiUrl:l}'.", url);
-                    var message = PrepareHttpRequestMessage(json, url, auth);
-                    return httpClient.SendAsync(message);
-                });
+                return await httpClient.SendAsync(message);
             }
-            catch (Exception exception)
+            catch (HttpRequestException exception)
             {
-                _logger.Warning("Failed to send request to API '{ApiUrl:l}': {Message:l}", url, exception.Message);
+                _logger.Warning("Failed to send request to API '{ApiUrl:l}': {Message:l}", message.RequestUri, exception.Message);
                 return null;
             }
         }
