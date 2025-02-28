@@ -116,8 +116,8 @@ namespace MultiFactor.Ldap.Adapter.Services
                 _logger.Information("Sending request to API '{ApiUrl:l}'.", url);
                 try
                 {
-                    var message = PrepareHttpRequestMessage(json, url, auth);
-                    var res = await TrySendRequest(httpClient, message);
+                    var message = CreateHttpRequestMessage(json, url, auth);
+                    var res = await TrySendRequestAsync(httpClient, message);
                     if (res == null)
                         continue;
 
@@ -156,7 +156,7 @@ namespace MultiFactor.Ldap.Adapter.Services
             return null;
         }
 
-        private async Task<HttpResponseMessage> TrySendRequest(HttpClient httpClient, HttpRequestMessage message)
+        private async Task<HttpResponseMessage> TrySendRequestAsync(HttpClient httpClient, HttpRequestMessage message)
         {
             try
             {
@@ -169,7 +169,7 @@ namespace MultiFactor.Ldap.Adapter.Services
             }
         }
 
-        private static HttpRequestMessage PrepareHttpRequestMessage(string json, string url, string auth)
+        private static HttpRequestMessage CreateHttpRequestMessage(string json, string url, string auth)
         {
             var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
             var message = new HttpRequestMessage(HttpMethod.Post, url)
