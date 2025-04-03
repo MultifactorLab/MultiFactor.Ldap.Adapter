@@ -1,5 +1,5 @@
 ﻿//Copyright(c) 2021 MultiFactor
-//Please see licence at 
+//Please see licence at
 //https://github.com/MultifactorLab/MultiFactor.Ldap.Adapter/blob/main/LICENSE.md
 
 using MultiFactor.Ldap.Adapter.Core;
@@ -60,7 +60,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// <summary>
         /// Multifactor API URL
         /// </summary>
-        public string ApiUrl { get; set; }
+        public string[] ApiUrls { get; set; }
 
         /// <summary>
         /// HTTP Proxy for API
@@ -115,9 +115,14 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 throw new Exception("Configuration error: 'logging-level' element not found");
             }
 
+            var apiUrls = apiUrlSetting
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Distinct()
+                .ToArray();
             var configuration = new ServiceConfiguration
             {
-                ApiUrl = apiUrlSetting,
+                ApiUrls = apiUrls,
                 ApiProxy = apiProxySetting,
                 ApiTimeout = apiTimeout,
                 LogLevel = logLevelSetting,
@@ -232,7 +237,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 LdapServer = ldapServerSetting,
                 MultifactorApiKey = multifactorApiKeySetting,
                 MultifactorApiSecret = multifactorApiSecretSetting,
-                TransformLdapIdentity = string.IsNullOrEmpty(transformLdapIdentity) 
+                TransformLdapIdentity = string.IsNullOrEmpty(transformLdapIdentity)
                     ? LdapIdentityFormat.None
                     : (LdapIdentityFormat)Enum.Parse(typeof(LdapIdentityFormat), transformLdapIdentity, true)
             };
@@ -308,7 +313,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 throw new Exception($"Configuration error: Can't parse '{Constants.Configuration.AuthenticationCacheLifetime}' value");
             }
-            
+
             if (TimeSpan.TryParse(ldapBindTimeout, out var bindTimeout))
             {
                 if (bindTimeout > TimeSpan.Zero)
