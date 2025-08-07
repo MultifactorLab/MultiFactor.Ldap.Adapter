@@ -13,6 +13,7 @@ using System.Reflection;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
+using MultiFactor.Ldap.Adapter.Core;
 
 namespace MultiFactor.Ldap.Adapter
 {
@@ -22,6 +23,19 @@ namespace MultiFactor.Ldap.Adapter
         /// Main entry point
         /// </summary>
         static void Main(string[] args)
+        {
+            try
+            {
+                Start(args);
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = FlattenException(ex);
+                StartupLogger.Error(ex, "Unable to start: {Message:l}", errorMessage);
+            }
+        }
+
+        private static void Start(string[] args)
         {
             //create logging
             var levelSwitch = new LoggingLevelSwitch(LogEventLevel.Information);
@@ -74,7 +88,7 @@ namespace MultiFactor.Ldap.Adapter
                         eventArgs.Cancel = true;
                         cts.Cancel();
                     };
-                    
+
                     adapterService.StartServer();
 
                     cts.Token.WaitHandle.WaitOne();
@@ -91,7 +105,7 @@ namespace MultiFactor.Ldap.Adapter
                     ServiceBase.Run(ServicesToRun);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.Logger.Error($"Unable to start: {ex.Message}");
             }
@@ -100,7 +114,8 @@ namespace MultiFactor.Ldap.Adapter
         private static void InstallService()
         {
             Log.Logger.Information($"Installing service {ServiceConfiguration.ServiceUnitName}");
-            System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[] { "/i", Assembly.GetExecutingAssembly().Location });
+            System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[]
+                { "/i", Assembly.GetExecutingAssembly().Location });
             Log.Logger.Information("Service installed");
             Log.Logger.Information($"Use 'net start {ServiceConfiguration.ServiceUnitName}' to run");
             Log.Logger.Information("Press any key to exit");
@@ -110,10 +125,32 @@ namespace MultiFactor.Ldap.Adapter
         public static void UnInstallService()
         {
             Log.Logger.Information($"UnInstalling service {ServiceConfiguration.ServiceUnitName}");
-            System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[] { "/u", Assembly.GetExecutingAssembly().Location });
+            System.Configuration.Install.ManagedInstallerClass.InstallHelper(new string[]
+                { "/u", Assembly.GetExecutingAssembly().Location });
             Log.Logger.Information("Service uninstalled");
             Log.Logger.Information("Press any key to exit");
             Console.ReadKey();
+        }
+        
+        static string FlattenException(Exception exception)
+        {
+            var stringBuilder = new StringBuilder();
+
+            var counter = 0;
+
+            while (exception != null)
+            {
+                if (counter++ > 0)
+                {
+                    var prefix = new string('-', counter) + ">\t";
+                    stringBuilder.Append(prefix);
+                }
+
+                stringBuilder.AppendLine(exception.Message);
+                exception = exception.InnerException;
+            }
+
+            return stringBuilder.ToString();
         }
     }
 }

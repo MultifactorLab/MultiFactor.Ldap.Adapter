@@ -223,6 +223,7 @@
     <Compile Include="Core\NameResolving\NameTranslators\UpnFromProfileNameTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTypeDetector.cs" />
     <Compile Include="Core\NameResolving\NetbiosDomainName.cs" />
+    <Compile Include="Core\StartupLogger.cs" />
     <Compile Include="Core\Tag.cs" />
     <Compile Include="Core\TagClass.cs" />
     <Compile Include="Core\UniversalDataType.cs" />
