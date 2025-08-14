@@ -121,9 +121,9 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
         }
 
-        private async Task<bool> ProcessRemoteEndPoint(RemoteEndPoint remoteEndPoint, TcpClient client,
-            ClientConfiguration clientConfiguration)
+        private async Task<bool> ProcessRemoteEndPoint(RemoteEndPoint remoteEndPoint, TcpClient client, ClientConfiguration clientConfiguration)
         {
+            var clientEndpoint = (IPEndPoint)client.Client.RemoteEndPoint;
             try
             {
                 var serverEndpoint = remoteEndPoint.GetIPEndPoint();
@@ -133,7 +133,7 @@ namespace MultiFactor.Ldap.Adapter.Server
                     await WaitTaskWithTimeout(
                         serverConnection.ConnectAsync(serverEndpoint.Address, serverEndpoint.Port),
                         clientConfiguration.LdapBindTimeout);
-
+                    
                     using (var serverStream = await GetServerStream(serverConnection, remoteEndPoint))
                     {
                         using (var clientStream = await GetClientStream(client))
@@ -152,7 +152,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, $"Error while connecting client '{clientConfiguration.Name}' to {remoteEndPoint.Host}:{remoteEndPoint.Port}");
+                _logger.Error(ex, $"Error while connecting client '{clientEndpoint}' to {remoteEndPoint.Host}:{remoteEndPoint.Port} with '{clientConfiguration.Name}' configuration");
             }
 
             return false;
