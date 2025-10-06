@@ -115,6 +115,37 @@ namespace MultiFactor.Ldap.Adapter.Services
 
             return packet;
         }
+        
+        public LdapPacket CreateIsMemberOfRequest(string userDn, string groupDn)
+        {
+            var packet = new LdapPacket(_messageId++);
+
+            var searchRequest = new LdapAttribute(LdapOperation.SearchRequest);
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, userDn));    //base dn
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)2));    //scope: subtree
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Enumerated, (byte)0));    //aliases: never
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (byte)255));     //size limit: 255
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Integer, (byte)60));      //time limit: 60
+            searchRequest.ChildAttributes.Add(new LdapAttribute(UniversalDataType.Boolean, true));          //typesOnly: true
+
+            var filter = new LdapAttribute(9);
+
+            filter.ChildAttributes.Add(new LdapAttribute(1, "1.2.840.113556.1.4.1941"));    //AD filter
+            filter.ChildAttributes.Add(new LdapAttribute(2, "memberof"));
+            filter.ChildAttributes.Add(new LdapAttribute(3, groupDn));
+            filter.ChildAttributes.Add(new LdapAttribute(4, (byte)0));
+
+            searchRequest.ChildAttributes.Add(filter);
+
+            packet.ChildAttributes.Add(searchRequest);
+
+            var attrList = new LdapAttribute(UniversalDataType.Sequence);
+            attrList.ChildAttributes.Add(new LdapAttribute(UniversalDataType.OctetString, "distinguishedName"));
+
+            searchRequest.ChildAttributes.Add(attrList);
+
+            return packet;
+        }
 
         public LdapPacket CreateGetPartitions(string baseDn)
         {

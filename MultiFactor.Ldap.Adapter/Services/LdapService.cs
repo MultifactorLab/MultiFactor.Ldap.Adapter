@@ -105,7 +105,7 @@ namespace MultiFactor.Ldap.Adapter.Services
                                 mailEntries.Add(entry);
                                 break;
                             case "memberOf":
-                                profile.MemberOf.AddRange(entry.Values.Select(v => DnToCn(v)));
+                                profile.MemberOf.AddRange(entry.Values);
                                 break;
                         }
                     }
@@ -142,7 +142,28 @@ namespace MultiFactor.Ldap.Adapter.Services
             return groups;
         }
 
+        public async Task<bool> IsMemberOf(Stream ldapConnectedStream, LdapProfile profile, ClientConfiguration clientConfiguration, string group)
+        {
+            if (!clientConfiguration.LoadActiveDirectoryNestedGroups)
+            {
+                var member = (profile.MemberOf?.Select(FormatDn) ?? new List<string>()).Any(x => x == FormatDn(group));
+                return member;
+            }
 
+            var request = _requestFactory.CreateIsMemberOfRequest(profile.Dn, group);
+            var requestData = request.GetBytes();
+            await ldapConnectedStream.WriteAsync(requestData, 0, requestData.Length);
+            
+            var users = new List<string>();
+            LdapPacket packet;
+            while ((packet = await LdapPacket.ParsePacket(ldapConnectedStream)) != null)
+            {
+                users.AddRange(GetSearchResult(packet));
+            }
+
+            return users.Any();
+        }
+        
         public async Task<NetbiosDomainName[]> GetDomains(Stream serverStream, string baseDn)
         {
             var request = _requestFactory.CreateGetPartitions(baseDn);
@@ -238,7 +259,25 @@ namespace MultiFactor.Ldap.Adapter.Services
 
             return groups;
         }
+        
+        private IEnumerable<string> GetSearchResult(LdapPacket packet)
+        {
+            var groups = new List<string>();
 
+            foreach (var searchResultEntry in packet.ChildAttributes.FindAll(attr => attr.LdapOperation == LdapOperation.SearchResultEntry))
+            {
+                if (searchResultEntry.ChildAttributes.Count > 0)
+                {
+                    var group = searchResultEntry.ChildAttributes[0].GetValue<string>();
+                    groups.Add(group);
+                }
+            }
+
+            return groups;
+        }
+
+        private string FormatDn(string dn) => dn.ToLower().Replace(" ", string.Empty);
+        
         /// <summary>
         /// Extracts CN from DN
         /// </summary>

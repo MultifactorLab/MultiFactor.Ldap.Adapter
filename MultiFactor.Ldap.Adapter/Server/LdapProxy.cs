@@ -10,6 +10,7 @@ using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -203,10 +204,10 @@ namespace MultiFactor.Ldap.Adapter.Server
                             //check ACL
                             if (_clientConfig.ActiveDirectoryGroup.Any())
                             {
-                                var accessGroup = _clientConfig.ActiveDirectoryGroup.FirstOrDefault(group => IsMemberOf(profile, group));
-                                if (accessGroup != null)
+                                var result = await IsMemberOfAny(profile, _clientConfig.ActiveDirectoryGroup);
+                                if (result.IsMember)
                                 {
-                                    _logger.Debug($"User '{{user:l}}' is member of '{accessGroup.Trim()}' access group in {profile.BaseDn}", _userName);
+                                    _logger.Debug($"User '{{user:l}}' is member of '{result.Group.Trim()}' access group in {profile.BaseDn}", _userName);
                                 }
                                 else
                                 {
@@ -228,10 +229,10 @@ namespace MultiFactor.Ldap.Adapter.Server
                             //check if mfa is mandatory
                             if (_clientConfig.ActiveDirectory2FaGroup.Any())
                             {
-                                var mfaGroup = _clientConfig.ActiveDirectory2FaGroup.FirstOrDefault(group => IsMemberOf(profile, group));
-                                if (mfaGroup != null)
+                                var result = await IsMemberOfAny(profile, _clientConfig.ActiveDirectory2FaGroup);
+                                if (result.IsMember)
                                 {
-                                    _logger.Debug($"User '{{user:l}}' is member of '{mfaGroup.Trim()}' 2FA group in {profile.BaseDn}", _userName);
+                                    _logger.Debug($"User '{{user:l}}' is member of '{result.Group.Trim()}' 2FA group in {profile.BaseDn}", _userName);
 
                                 }
                                 else
@@ -244,10 +245,10 @@ namespace MultiFactor.Ldap.Adapter.Server
                             //check of mfa is not mandatory
                             if (_clientConfig.ActiveDirectory2FaBypassGroup.Any() && !bypass)
                             {
-                                var bypassGroup = _clientConfig.ActiveDirectory2FaBypassGroup.FirstOrDefault(group => IsMemberOf(profile, group));
-                                if (bypassGroup != null)
+                                var result = await IsMemberOfAny(profile, _clientConfig.ActiveDirectory2FaBypassGroup);
+                                if (result.IsMember)
                                 {
-                                    _logger.Information($"User '{{user:l}}' is member of '{bypassGroup.Trim()}' 2FA bypass group in {profile.BaseDn}", _userName);
+                                    _logger.Information($"User '{{user:l}}' is member of '{result.Group.Trim()}' 2FA bypass group in {profile.BaseDn}", _userName);
                                     bypass = true;
                                 }
                                 else
@@ -487,6 +488,26 @@ namespace MultiFactor.Ldap.Adapter.Server
             return _nameResolverService.Resolve(context, _userName, loginFormat);
         }
 
+        private async Task<MemberOfResult> IsMemberOfAny(LdapProfile profile, IEnumerable<string> groups)
+        {
+            foreach (var gr in groups)
+            {
+                var isMember = await _ldapService.IsMemberOf(_serverStream, profile, _clientConfig, gr);
+                
+                if (!isMember)
+                    continue;
+
+                return new MemberOfResult() { IsMember = true, Group = gr };
+            }
+            
+            return new MemberOfResult() { IsMember = false };
+        }
+        
+        private class MemberOfResult
+        {
+            public bool IsMember { get; set; }
+            public string Group { get; set; }
+        }
     }
 
     public enum LdapProxyAuthenticationStatus
