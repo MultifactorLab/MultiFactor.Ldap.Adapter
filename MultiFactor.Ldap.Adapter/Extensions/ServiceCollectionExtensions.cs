@@ -12,6 +12,8 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Http.Resilience;
+using Polly;
 
 namespace MultiFactor.Ldap.Adapter.Extensions
 {
@@ -48,7 +50,16 @@ namespace MultiFactor.Ldap.Adapter.Extensions
 
                 return handler;
             })
-            .AddHttpMessageHandler<MfTraceIdHeaderSetter>();
+            .AddHttpMessageHandler<MfTraceIdHeaderSetter>()
+            .AddResilienceHandler("mf-api-pipeline", x =>
+            {
+                x.AddRetry(new HttpRetryStrategyOptions
+                {
+                    MaxRetryAttempts = 2,
+                    Delay = TimeSpan.FromSeconds(1),
+                    BackoffType = DelayBackoffType.Exponential
+                });
+            });
         }
 
         public static void ConfigureApplicationServices(this IServiceCollection services, LoggingLevelSwitch levelSwitch, string syslogInfoMessage)
