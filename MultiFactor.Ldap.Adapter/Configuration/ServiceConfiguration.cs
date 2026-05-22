@@ -71,7 +71,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// <summary>
         /// HTTP timeout for Multifactor requests
         /// </summary>
-        public TimeSpan ApiTimeout{ get; set; }
+        public string ApiTimeout{ get; set; }
 
         /// <summary>
         /// Logging level
@@ -109,7 +109,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 throw new Exception("Configuration error: 'multifactor-api-url' element not found");
             }
-            TimeSpan apiTimeout = ParseHttpTimeout(apiTimeoutSetting);
             if (string.IsNullOrEmpty(logLevelSetting))
             {
                 throw new Exception("Configuration error: 'logging-level' element not found");
@@ -119,7 +118,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 ApiUrl = apiUrlSetting,
                 ApiProxy = apiProxySetting,
-                ApiTimeout = apiTimeout,
+                ApiTimeout = apiTimeoutSetting,
                 LogLevel = logLevelSetting,
             };
 
@@ -320,62 +319,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             configuration.PrivacyModeDescriptor = PrivacyModeDescriptor.Create(privacyMode);
 
             return configuration;
-        }
-
-        private static TimeSpan ParseHttpTimeout(string timeoutSetting)
-        {
-            var recommendedTimeout = TimeSpan.FromSeconds(65);
-
-            if (string.IsNullOrWhiteSpace(timeoutSetting))
-            {
-                return recommendedTimeout;
-            }
-
-            var isForced = timeoutSetting.EndsWith('!');
-            if (isForced)
-            {
-                timeoutSetting = timeoutSetting.TrimEnd('!');
-            }
-
-            if (!TimeSpan.TryParseExact(timeoutSetting,
-                    @"hh\:mm\:ss",
-                    null,
-                    System.Globalization.TimeSpanStyles.None,
-                    out var timeout))
-            {
-                StartupLogger.Warning(
-                    "Can't parse API timeout. Recommended timeout {Recommended}s is used",
-                    recommendedTimeout.TotalSeconds);
-
-                return recommendedTimeout;
-            }
-            
-            if (timeout == TimeSpan.Zero)
-            {
-                return Timeout.InfiniteTimeSpan;
-            }
-
-            if (timeout >= recommendedTimeout)
-            {
-                return timeout;
-            }
-
-            if (!isForced)
-            {
-                StartupLogger.Warning(
-                    "Timeout {Timeout}s is less than recommended minimum {Recommended}s. Use 'value!' to force",
-                    timeout.TotalSeconds,
-                    recommendedTimeout.TotalSeconds);
-
-                return recommendedTimeout;
-            }
-
-            StartupLogger.Warning(
-                "Timeout {Timeout}s is less than recommended minimum {Recommended}s",
-                timeout.TotalSeconds,
-                recommendedTimeout.TotalSeconds);
-
-            return timeout;
         }
 
         private static bool TryParseIPEndPoint(string text, out IPEndPoint ipEndPoint)

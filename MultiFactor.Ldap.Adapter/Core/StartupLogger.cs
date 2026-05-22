@@ -57,7 +57,7 @@ namespace MultiFactor.Ldap.Adapter.Core
             _logger.Value.Information(message, values);
 
         /// <inheritdoc cref="Logger.Warning"/>
-        public static void Warning(string message, params object?[] values) => _logger.Value.Warning(message, values);
+        public static void Warning(string message, params object[] values) => _logger.Value.Warning(message, values);
 
         /// <inheritdoc cref="Logger.Error"/>
         public static void Error(string message, params object[] values) => _logger.Value.Error(message, values);

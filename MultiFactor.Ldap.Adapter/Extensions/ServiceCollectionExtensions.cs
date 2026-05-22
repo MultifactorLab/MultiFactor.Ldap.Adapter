@@ -30,9 +30,13 @@ namespace MultiFactor.Ldap.Adapter.Extensions
             services.AddHttpContextAccessor();
             services.AddTransient<MfTraceIdHeaderSetter>();
 
+            var httpClientTimeout = ConfigurationValueParser.TryParseTimeout(conf.ApiTimeout, out var timeout)
+                ? timeout.Value
+                : ConfigurationValueParser.RecommendedTimeout;
+
             services.AddHttpClient(nameof(MultiFactorApiClient), client =>
             {
-                client.Timeout = conf.ApiTimeout;
+                client.Timeout = httpClientTimeout;
             })
             .ConfigurePrimaryHttpMessageHandler(prov =>
             {
