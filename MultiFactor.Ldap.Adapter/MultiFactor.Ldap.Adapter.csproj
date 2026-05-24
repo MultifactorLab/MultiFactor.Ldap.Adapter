@@ -194,6 +194,7 @@
   <ItemGroup>
     <Compile Include="Configuration\AuthenticatedClientCacheConfig.cs" />
     <Compile Include="Configuration\ClientConfiguration.cs" />
+    <Compile Include="Configuration\ConfigurationValueParser.cs" />
     <Compile Include="Configuration\ILdapServerConfig.cs" />
     <Compile Include="Configuration\LdapServerConfig.cs" />
     <Compile Include="Configuration\PrivacyMode.cs" />
