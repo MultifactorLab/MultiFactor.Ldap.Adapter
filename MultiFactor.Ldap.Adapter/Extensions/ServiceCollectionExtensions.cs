@@ -7,7 +7,11 @@ using MultiFactor.Ldap.Adapter.Services.Caching;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
+using System;
+using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography.X509Certificates;
 
 namespace MultiFactor.Ldap.Adapter.Extensions
 {
