@@ -1,5 +1,3 @@
-using System;
-using System.Threading;
 using MultiFactor.Ldap.Adapter.Core;
 
 namespace MultiFactor.Ldap.Adapter.Configuration
@@ -8,13 +6,11 @@ namespace MultiFactor.Ldap.Adapter.Configuration
     {
         public static TimeSpan RecommendedTimeout { get; } = TimeSpan.FromSeconds(65);
 
-        public static bool TryParseTimeout(string value, out TimeSpan? result)
+        public static TimeSpan ParseTimeout(string value)
         {
-            result = null;
-
             if (string.IsNullOrWhiteSpace(value))
             {
-                return false;
+                return RecommendedTimeout;
             }
 
             var isForced = value.EndsWith("!");
@@ -33,21 +29,17 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                     "Can't parse API timeout. Recommended timeout {Recommended}s is used",
                     RecommendedTimeout.TotalSeconds);
 
-                return false;
+                return RecommendedTimeout;
             }
 
             if (timeout == TimeSpan.Zero)
             {
-                result = Timeout.InfiniteTimeSpan;
-
-                return true;
+                return Timeout.InfiniteTimeSpan;
             }
 
             if (timeout >= RecommendedTimeout)
             {
-                result = timeout;
-
-                return true;
+                return timeout;
             }
 
             if (!isForced)
@@ -57,19 +49,15 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                     timeout.TotalSeconds,
                     RecommendedTimeout.TotalSeconds);
 
-                result = RecommendedTimeout;
-            }
-            else
-            {
-                StartupLogger.Warning(
-                    "Timeout {Timeout}s is less than recommended minimum {Recommended}s",
-                    timeout.TotalSeconds,
-                    RecommendedTimeout.TotalSeconds);
-
-                result = timeout;
+                return RecommendedTimeout;
             }
 
-            return true;
+            StartupLogger.Warning(
+                "Timeout {Timeout}s is less than recommended minimum {Recommended}s",
+                timeout.TotalSeconds,
+                RecommendedTimeout.TotalSeconds);
+
+            return timeout;
         }
     }
 }
