@@ -154,12 +154,11 @@ namespace MultiFactor.Ldap.Adapter.Services
 
                 if (!clientConfig.BypassSecondFactorWhenApiUnreachable)
                 {
-                    return null;
+                    _logger.Warning("Bypass second factor");
+                    return MultiFactorAccessRequest.Bypass;
                 }
 
-                _logger.Warning("Bypass second factor");
-
-                return MultiFactorAccessRequest.Bypass;
+                return null;
             }
         }
 
