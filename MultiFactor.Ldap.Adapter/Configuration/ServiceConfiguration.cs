@@ -71,7 +71,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         /// <summary>
         /// HTTP timeout for Multifactor requests
         /// </summary>
-        public TimeSpan ApiTimeout{ get; set; }
+        public string ApiTimeout{ get; set; }
 
         /// <summary>
         /// Logging level
@@ -109,7 +109,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 throw new Exception("Configuration error: 'multifactor-api-url' element not found");
             }
-            TimeSpan apiTimeout = ParseHttpTimeout(apiTimeoutSetting);
             if (string.IsNullOrEmpty(logLevelSetting))
             {
                 throw new Exception("Configuration error: 'logging-level' element not found");
@@ -119,7 +118,7 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             {
                 ApiUrl = apiUrlSetting,
                 ApiProxy = apiProxySetting,
-                ApiTimeout = apiTimeout,
+                ApiTimeout = apiTimeoutSetting,
                 LogLevel = logLevelSetting,
             };
 
@@ -320,20 +319,6 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             configuration.PrivacyModeDescriptor = PrivacyModeDescriptor.Create(privacyMode);
 
             return configuration;
-        }
-
-        private static TimeSpan ParseHttpTimeout(string mfTimeoutSetting)
-        {
-            TimeSpan _minimalApiTimeout = TimeSpan.FromSeconds(65);
-
-            if (!TimeSpan.TryParseExact(mfTimeoutSetting, @"hh\:mm\:ss", null, System.Globalization.TimeSpanStyles.None, out var httpRequestTimeout))
-                return _minimalApiTimeout;
-
-            return httpRequestTimeout == TimeSpan.Zero ?
-                Timeout.InfiniteTimeSpan // infinity timeout
-                : httpRequestTimeout < _minimalApiTimeout
-                    ? _minimalApiTimeout  // minimal timeout
-                    : httpRequestTimeout; // timeout from config
         }
 
         private static bool TryParseIPEndPoint(string text, out IPEndPoint ipEndPoint)
