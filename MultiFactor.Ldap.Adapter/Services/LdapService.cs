@@ -9,11 +9,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace MultiFactor.Ldap.Adapter.Services
 {
     public class LdapService
     {
+        private readonly ILogger _logger;
+
+        public LdapService(ILogger logger = null)
+        {
+            _logger = logger ?? Log.Logger;
+        }
+        
         private readonly RequestFactory _requestFactory = new RequestFactory();
 
         public async Task<string> GetDefaultNamingContext(Stream ldapConnectedStream)
@@ -60,6 +68,8 @@ namespace MultiFactor.Ldap.Adapter.Services
 
         public async Task<LdapProfile> LoadProfile(Stream ldapConnectedStream, string baseDn, string userName)
         {
+            _logger.Debug("Loading profile of user '{user:l}' in {baseDn:l}", userName, baseDn);
+
             var request = _requestFactory.CreateLoadProfileRequest(userName, baseDn);
             var requestData = request.GetBytes();
 
@@ -112,11 +122,17 @@ namespace MultiFactor.Ldap.Adapter.Services
                 }
             }
             
-            if (profile != null)
+            if (profile == null)
             {
-                profile.Email = GetMail(mailEntries);
+                _logger.Debug("Profile of user '{user:l}' was not found in {baseDn:l}", userName, baseDn);
+
+                return null;
             }
-            
+
+            profile.Email = GetMail(mailEntries);
+
+            _logger.Debug("Loaded profile of user '{user:l}' ({dn:l})", userName, profile.Dn);
+
             return profile;
         }
 
@@ -138,6 +154,8 @@ namespace MultiFactor.Ldap.Adapter.Services
             {
                 groups.AddRange(GetGroups(packet));
             }
+
+            _logger.Debug("Loaded {count} group(s) of user {dn:l}", groups.Count, profile.Dn);
 
             return groups;
         }
