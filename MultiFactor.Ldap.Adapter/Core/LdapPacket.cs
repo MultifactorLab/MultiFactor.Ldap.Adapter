@@ -27,6 +27,8 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using MultiFactor.Ldap.Adapter.Extensions;
+using Serilog;
 
 namespace MultiFactor.Ldap.Adapter.Core
 {
@@ -86,20 +88,16 @@ namespace MultiFactor.Ldap.Adapter.Core
                     var contentLength = await Utils.BerLengthToInt(stream);
                     var contentBytes = new byte[contentLength.Length];
 
-                    int bytesRead = 0;
-                    while (bytesRead < contentLength.Length)
-                    {
-                        var len = await stream.ReadAsync(contentBytes, bytesRead, contentLength.Length - bytesRead);
-                        if (len == 0) break;
-                        bytesRead += len;
-                    }
+                    await stream.ReadExactlyAsync(contentBytes, 0, contentLength.Length);
 
                     var packet = new LdapPacket(Tag.Parse(tagByte[0]));
                     packet.ChildAttributes.AddRange(await ParseAttributes(contentBytes, 0, contentLength.Length));
 
-                    if (packet.ChildAttributes.Any(attr => attr.LdapOperation == Core.LdapOperation.SearchResultDone))
+                    var searchDone = packet.ChildAttributes.FirstOrDefault(attr => attr.LdapOperation == Core.LdapOperation.SearchResultDone);
+                    if (searchDone != null)
                     {
-                        return null; //thats all, stop reading
+                        LogNonSuccessResult(searchDone);
+                        return null;
                     }
 
                     return packet;
@@ -112,6 +110,30 @@ namespace MultiFactor.Ldap.Adapter.Core
             }
 
             return null;
+        }
+
+        private static void LogNonSuccessResult(LdapAttribute searchDone)
+        {
+            var resultAttr = searchDone.ChildAttributes.FirstOrDefault(attr => attr.DataType == UniversalDataType.Enumerated);
+            if (resultAttr == null || resultAttr.Value.Length == 0)
+            {
+                return;
+            }
+
+            var result = (LdapResult)resultAttr.GetValue();
+            if (result == LdapResult.success)
+            {
+                return;
+            }
+
+            if (result == LdapResult.referral || result == LdapResult.sizeLimitExceeded ||
+                result == LdapResult.timeLimitExceeded)
+            {
+                Log.Logger.Debug("LDAP search operation completed with {result} result", result);
+                return;
+            }
+
+            Log.Logger.Warning("LDAP search operation completed with {result} result", result);
         }
     }
 }

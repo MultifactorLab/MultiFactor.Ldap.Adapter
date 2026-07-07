@@ -231,6 +231,7 @@
     <Compile Include="Core\Utils.cs" />
     <Compile Include="Extensions\LoggerConfigurationExtensions.cs" />
     <Compile Include="Extensions\ServiceCollectionExtensions.cs" />
+    <Compile Include="Extensions\StreamExtensions.cs" />
     <Compile Include="Server\Authentication\DigestMd5BindAuthentication.cs" />
     <Compile Include="Server\Authentication\NtlmBindAuthentication.cs" />
     <Compile Include="Server\Authentication\SpnegoNtlmBindAuthentication.cs" />

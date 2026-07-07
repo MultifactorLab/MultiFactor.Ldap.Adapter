@@ -34,6 +34,8 @@ namespace MultiFactor.Ldap.Adapter.Server
 
         private LdapProxyAuthenticationStatus _status;
 
+        private volatile bool _closing;
+
         private static readonly ConcurrentDictionary<string, string> _usersDn2Cn = new ConcurrentDictionary<string, string>();
         private static readonly ConcurrentDictionary<string, string> _usersCn2Dn = new ConcurrentDictionary<string, string>();
 
@@ -57,7 +59,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _ldapService = new LdapService();
+            _ldapService = new LdapService(_logger);
             _nameResolverService = nameResolverService;
         }
 
@@ -68,15 +70,25 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             _logger.Information("Opened {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
 
-            await Task.WhenAny(
-                DataExchange(_clientConnection, _clientStream, _serverConnection, _serverStream, ParseAndProcessRequest),
-                DataExchange(_serverConnection, _serverStream, _clientConnection, _clientStream, ParseAndProcessResponse));
+            var requestStats = new ExchangeStats();
+            var responseStats = new ExchangeStats();
 
-            _logger.Debug("Closed {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
+            await Task.WhenAny(
+                DataExchange(_clientConnection, _clientStream, _serverConnection, _serverStream, ParseAndProcessRequest, requestStats),
+                DataExchange(_serverConnection, _serverStream, _clientConnection, _clientStream, ParseAndProcessResponse, responseStats));
+
+            _closing = true;
+
+            _logger.Information("Closed {client} => {server} client {clientName:l} : requests {requestPackets} packet(s) / {requestBytes} byte(s), responses {responsePackets} packet(s) / {responseBytes} byte(s)",
+                from, to, _clientConfig.Name, requestStats.Packets, requestStats.Bytes, responseStats.Packets, responseStats.Bytes);
         }
 
-        private async Task DataExchange(TcpClient source, Stream sourceStream, TcpClient target, Stream targetStream, Func<byte[], int, Task<(byte[], int)>> process)
+        private async Task DataExchange(TcpClient source, Stream sourceStream, TcpClient target, Stream targetStream,
+            Func<byte[], int, Task<(byte[], int)>> process, ExchangeStats stats)
         {
+            var from = source.Client.RemoteEndPoint.ToString();
+            var to = target.Client.RemoteEndPoint.ToString();
+
             try
             {
                 var bytesRead = 0;
@@ -86,6 +98,14 @@ namespace MultiFactor.Ldap.Adapter.Server
                 {
                     //read
                     bytesRead = await sourceStream.ReadAsync(requestData, 0, requestData.Length);
+                    if (bytesRead == 0)
+                    {
+                        _logger.Debug("Connection {from} => {to} finished, end of stream", from, to);
+                        break;
+                    }
+
+                    stats.Packets++;
+                    stats.Bytes += bytesRead;
 
                     //process
                     var response = await process(requestData, bytesRead);
@@ -96,18 +116,22 @@ namespace MultiFactor.Ldap.Adapter.Server
                     if (_status == LdapProxyAuthenticationStatus.AuthenticationFailed)
                     {
                         source.Close();
+                        break;
                     }
 
                 } while (bytesRead != 0);
             }
-            catch (IOException)
+            catch (IOException) when (_closing)
             {
-                //connection closed unexpectly
-                //_logger.Debug(ioex, "proxy");
+                //other side has finished and streams are being disposed, aborted read is expected here
+            }
+            catch (IOException ex)
+            {
+                _logger.Warning("Connection {from} => {to} closed unexpectedly: {message:l}", from, to, ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Data exchange error from {client} to {server}", source.Client.RemoteEndPoint, target.Client.RemoteEndPoint);
+                _logger.Error(ex, "Data exchange error from {from} to {to}", from, to);
             }
         }
 
@@ -487,6 +511,12 @@ namespace MultiFactor.Ldap.Adapter.Server
             return _nameResolverService.Resolve(context, _userName, loginFormat);
         }
 
+    }
+
+    internal class ExchangeStats
+    {
+        public long Packets;
+        public long Bytes;
     }
 
     public enum LdapProxyAuthenticationStatus
