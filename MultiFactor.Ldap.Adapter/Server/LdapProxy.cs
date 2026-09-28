@@ -10,16 +10,21 @@ using MultiFactor.Ldap.Adapter.Services;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MultiFactor.Ldap.Adapter.Server
 {
     public class LdapProxy
     {
+        private const string ClientSide = "client";
+        private const string ServerSide = "server";
+
         private TcpClient _clientConnection;
         private TcpClient _serverConnection;
         private Stream _clientStream;
@@ -33,6 +38,11 @@ namespace MultiFactor.Ldap.Adapter.Server
         private LdapService _ldapService;
 
         private LdapProxyAuthenticationStatus _status;
+
+        private volatile bool _closing;
+
+        private long _lastActivityTimestamp = Stopwatch.GetTimestamp();
+        private string _closeReason;
 
         private static readonly ConcurrentDictionary<string, string> _usersDn2Cn = new ConcurrentDictionary<string, string>();
         private static readonly ConcurrentDictionary<string, string> _usersCn2Dn = new ConcurrentDictionary<string, string>();
@@ -57,7 +67,7 @@ namespace MultiFactor.Ldap.Adapter.Server
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _ldapService = new LdapService();
+            _ldapService = new LdapService(_logger);
             _nameResolverService = nameResolverService;
         }
 
@@ -68,15 +78,28 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             _logger.Information("Opened {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
 
-            await Task.WhenAny(
-                DataExchange(_clientConnection, _clientStream, _serverConnection, _serverStream, ParseAndProcessRequest),
-                DataExchange(_serverConnection, _serverStream, _clientConnection, _clientStream, ParseAndProcessResponse));
+            var requestStats = new ExchangeStats();
+            var responseStats = new ExchangeStats();
 
-            _logger.Debug("Closed {client} => {server} client {clientName:l}", from, to, _clientConfig.Name);
+            await Task.WhenAny(
+                DataExchange(_clientConnection, _clientStream, _serverConnection, _serverStream, ParseAndProcessRequest, requestStats, ClientSide),
+                DataExchange(_serverConnection, _serverStream, _clientConnection, _clientStream, ParseAndProcessResponse, responseStats, ServerSide));
+
+            _closing = true;
+
+            var idleSeconds = (Stopwatch.GetTimestamp() - Volatile.Read(ref _lastActivityTimestamp)) / Stopwatch.Frequency;
+            var reason = Volatile.Read(ref _closeReason) ?? "closed for an unknown reason";
+
+            _logger.Information("Closed {client} => {server} client {clientName:l} : {reason:l}, idle {idle} s before close, requests {requestPackets} packet(s) / {requestBytes} byte(s), responses {responsePackets} packet(s) / {responseBytes} byte(s)",
+                from, to, _clientConfig.Name, reason, idleSeconds, requestStats.Packets, requestStats.Bytes, responseStats.Packets, responseStats.Bytes);
         }
 
-        private async Task DataExchange(TcpClient source, Stream sourceStream, TcpClient target, Stream targetStream, Func<byte[], int, Task<(byte[], int)>> process)
+        private async Task DataExchange(TcpClient source, Stream sourceStream, TcpClient target, Stream targetStream,
+            Func<byte[], int, Task<(byte[], int)>> process, ExchangeStats stats, string side)
         {
+            var from = source.Client.RemoteEndPoint.ToString();
+            var to = target.Client.RemoteEndPoint.ToString();
+
             try
             {
                 var bytesRead = 0;
@@ -86,6 +109,16 @@ namespace MultiFactor.Ldap.Adapter.Server
                 {
                     //read
                     bytesRead = await sourceStream.ReadAsync(requestData, 0, requestData.Length);
+                    if (bytesRead == 0)
+                    {
+                        SetCloseReason($"closed gracefully by the {side} side");
+                        _logger.Debug("Connection {from} => {to} finished, end of stream", from, to);
+                        break;
+                    }
+
+                    Volatile.Write(ref _lastActivityTimestamp, Stopwatch.GetTimestamp());
+                    stats.Packets++;
+                    stats.Bytes += bytesRead;
 
                     //process
                     var response = await process(requestData, bytesRead);
@@ -95,25 +128,50 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                     if (_status == LdapProxyAuthenticationStatus.AuthenticationFailed)
                     {
+                        SetCloseReason("closed by the adapter, authentication failed");
                         source.Close();
+                        break;
                     }
 
                 } while (bytesRead != 0);
             }
-            catch (IOException)
+            catch (IOException) when (_closing)
             {
-                //connection closed unexpectly
-                //_logger.Debug(ioex, "proxy");
+                //other side has finished and streams are being disposed, aborted read is expected here
+            }
+            catch (IOException ex)
+            {
+                SetCloseReason($"dropped by the {side} side: {ex.Message}");
+                _logger.Warning("Connection {from} => {to} closed unexpectedly: {message:l}", from, to, ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Data exchange error from {client} to {server}", source.Client.RemoteEndPoint, target.Client.RemoteEndPoint);
+                SetCloseReason($"data exchange error on the {side} side: {ex.Message}");
+                _logger.Error(ex, "Data exchange error from {from} to {to}", from, to);
             }
+        }
+
+        /// <summary>
+        /// Remembers what ended the connection. Only the first reason is kept: it belongs to the
+        /// pump that actually finished, the opposite one is torn down as a consequence.
+        /// </summary>
+        private void SetCloseReason(string reason)
+        {
+            Interlocked.CompareExchange(ref _closeReason, reason, null);
         }
 
         private async Task<(byte[], int)> ParseAndProcessRequest(byte[] data, int length)
         {
-            var packet = await LdapPacket.ParsePacket(data);
+            LdapPacket packet;
+            try
+            {
+                packet = await LdapPacket.ParsePacket(data);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Failed to parse {length} byte(s) request from {client}, bypassing as-is", length, _clientConnection.Client.RemoteEndPoint);
+                return await Task.FromResult((data, length));
+            }
 
             var searchRequest = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.SearchRequest);
             if (searchRequest != null)
@@ -174,6 +232,8 @@ namespace MultiFactor.Ldap.Adapter.Server
 
                     if (bound)  //first factor authenticated
                     {
+                        _logger.Debug("User '{user:l}' first factor verified at {server}", _userName, _serverConnection.Client.RemoteEndPoint);
+
                         var bypass = false;
 
                         //apply login transformation rules if any
@@ -300,23 +360,32 @@ namespace MultiFactor.Ldap.Adapter.Server
 
             if (_status == LdapProxyAuthenticationStatus.UserDnSearch)
             {
-                var packet = await LdapPacket.ParsePacket(data);
-                var searchResultEntry = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.SearchResultEntry);
-
-                if (searchResultEntry != null)
+                try
                 {
-                    var userDn = searchResultEntry.ChildAttributes[0].GetValue<string>();
+                    var packet = await LdapPacket.ParsePacket(data);
+                    var searchResultEntry = packet.ChildAttributes.SingleOrDefault(c => c.LdapOperation == LdapOperation.SearchResultEntry);
 
-                    if (_lookupUserName != null && userDn != null)
+                    if (searchResultEntry != null)
                     {
-                        userDn = userDn.ToLower(); //becouse some apps do it
+                        var userDn = searchResultEntry.ChildAttributes[0].GetValue<string>();
 
-                        _usersDn2Cn.TryRemove(userDn, out _);
-                        _usersDn2Cn.TryAdd(userDn, _lookupUserName);
+                        if (_lookupUserName != null && userDn != null)
+                        {
+                            userDn = userDn.ToLower(); //becouse some apps do it
 
-                        _usersCn2Dn.TryRemove(_lookupUserName, out _);
-                        _usersCn2Dn.TryAdd(_lookupUserName, userDn);
+                            _usersDn2Cn.TryRemove(userDn, out _);
+                            _usersDn2Cn.TryAdd(userDn, _lookupUserName);
+
+                            _usersCn2Dn.TryRemove(_lookupUserName, out _);
+                            _usersCn2Dn.TryAdd(_lookupUserName, userDn);
+
+                            _logger.Debug("Resolved user '{user:l}' DN: {dn:l}", _lookupUserName, userDn);
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning(ex, "Failed to parse DN search response of {length} byte(s), bypassing as-is", length);
                 }
 
                 _status = LdapProxyAuthenticationStatus.None;
@@ -487,6 +556,12 @@ namespace MultiFactor.Ldap.Adapter.Server
             return _nameResolverService.Resolve(context, _userName, loginFormat);
         }
 
+    }
+
+    internal class ExchangeStats
+    {
+        public long Packets;
+        public long Bytes;
     }
 
     public enum LdapProxyAuthenticationStatus

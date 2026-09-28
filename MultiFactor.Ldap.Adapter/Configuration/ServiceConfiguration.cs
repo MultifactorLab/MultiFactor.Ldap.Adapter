@@ -210,6 +210,8 @@ namespace MultiFactor.Ldap.Adapter.Configuration
             var loadActiveDirectoryNestedGroupsSettings             = appSettings.Settings["load-active-directory-nested-groups"]?.Value;
             var transformLdapIdentity                               = appSettings.Settings["transform-ldap-identity"]?.Value;
             var ldapBindTimeout                                     = appSettings.Settings["ldap-bind-timeout"]?.Value;
+            var keepAliveTime                                       = appSettings.Settings["ldap-server-keep-alive-time"]?.Value;
+            var keepAliveInterval                                   = appSettings.Settings["ldap-server-keep-alive-interval"]?.Value;
             var privacyMode                                         = appSettings.Settings["privacy-mode"]?.Value;
             
             if (string.IsNullOrEmpty(ldapServerSetting))
@@ -314,6 +316,17 @@ namespace MultiFactor.Ldap.Adapter.Configuration
                 {
                     configuration.LdapBindTimeout = bindTimeout;
                 }
+            }
+
+            //  TimeSpan.Zero is a valid value here: it turns keep-alive off
+            if (TimeSpan.TryParse(keepAliveTime, out var kaTime) && kaTime >= TimeSpan.Zero)
+            {
+                configuration.LdapServerKeepAliveTime = kaTime;
+            }
+
+            if (TimeSpan.TryParse(keepAliveInterval, out var kaInterval) && kaInterval > TimeSpan.Zero)
+            {
+                configuration.LdapServerKeepAliveInterval = kaInterval;
             }
             
             configuration.PrivacyModeDescriptor = PrivacyModeDescriptor.Create(privacyMode);

@@ -94,6 +94,17 @@ namespace MultiFactor.Ldap.Adapter.Configuration
         public AuthenticatedClientCacheConfig AuthenticationCacheLifetime { get; internal set; }
 
         public TimeSpan LdapBindTimeout { get; set; } = new TimeSpan(0, 0, 30);
+
+        /// <summary>
+        /// Idle time before the first TCP keep-alive probe is sent to the LDAP server.
+        /// TimeSpan.Zero disables keep-alive on the server connection.
+        /// </summary>
+        public TimeSpan LdapServerKeepAliveTime { get; set; } = new TimeSpan(0, 1, 0);
+
+        /// <summary>
+        /// Interval between TCP keep-alive probes sent to the LDAP server.
+        /// </summary>
+        public TimeSpan LdapServerKeepAliveInterval { get; set; } = new TimeSpan(0, 0, 10);
         
         public bool CheckUserGroups()
         {

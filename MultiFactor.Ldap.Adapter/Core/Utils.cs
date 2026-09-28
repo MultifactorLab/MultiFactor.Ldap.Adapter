@@ -29,6 +29,7 @@ using System.Text;
 using System.Linq;
 using System.IO;
 using System.Threading.Tasks;
+using MultiFactor.Ldap.Adapter.Extensions;
 
 namespace MultiFactor.Ldap.Adapter.Core
 {
@@ -145,13 +146,7 @@ namespace MultiFactor.Ldap.Adapter.Core
                 var lengthoflengthbytes = berByte[0] & 127;
                 var lengthBytes = new Byte[lengthoflengthbytes];
 
-                int bytesRead = 0;
-                while (bytesRead < lengthoflengthbytes)
-                {
-                    var len = await stream.ReadAsync(lengthBytes, bytesRead, lengthoflengthbytes - bytesRead);
-                    if (len == 0) break;
-                    bytesRead += len;
-                }
+                await stream.ReadExactlyAsync(lengthBytes, 0, lengthoflengthbytes);
 
                 Array.Reverse(lengthBytes);
                 Array.Resize(ref lengthBytes, 4);   // this will of course explode if length is larger than a 32 bit integer

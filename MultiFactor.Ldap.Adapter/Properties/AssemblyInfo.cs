@@ -22,15 +22,7 @@ using System.Runtime.InteropServices;
 // Указанный ниже идентификатор GUID предназначен для идентификации библиотеки типов, если этот проект будет видимым для COM-объектов
 [assembly: Guid("29f671c6-62da-40aa-905f-0a9387209ffe")]
 
-// Сведения о версии сборки состоят из указанных ниже четырех значений:
-//
-//      Основной номер версии
-//      Дополнительный номер версии
-//      Номер сборки
-//      Номер редакции
-//
-// Можно задать все значения или принять номера сборки и редакции по умолчанию 
-// используя "*", как показано ниже:
-// [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+// Атрибуты версии (AssemblyVersion / AssemblyFileVersion / AssemblyInformationalVersion)
+// генерируются при сборке таргетом GenerateVersionInfo из .csproj
+
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("MultiFactor.Ldap.Adapter.Tests")]
