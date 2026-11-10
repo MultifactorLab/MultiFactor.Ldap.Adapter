@@ -14,7 +14,7 @@ The component is a part of <a href="https://multifactor.pro/" target="_blank">Mu
 Linux version of the component is available in <a href="https://github.com/MultifactorLab/multifactor-ldap-adapter" target="_blank">multifactor-ldap-adapter</a> repository.
 
 See <a href="https://multifactor.pro/docs/ldap-adapter/windows/" target="_blank">knowledge base</a> for additional guidance on integrating 2FA through LDAP into your infrastructure.
-
+                    
 ## Table of Contents
 
 - [Overview](#overview)
