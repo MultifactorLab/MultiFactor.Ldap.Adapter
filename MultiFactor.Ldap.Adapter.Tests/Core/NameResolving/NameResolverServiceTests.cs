@@ -67,5 +67,39 @@ namespace MultiFactor.Ldap.Adapter.Tests.Core.NameResolving
             Assert.Equal("real.upn@domain.local",
                 Sut().Resolve(ctx, "samaccount@domain.local", LdapIdentityFormat.Upn));
         }
+
+        [Theory]
+        [InlineData(LdapIdentityFormat.Upn)]
+        [InlineData(LdapIdentityFormat.NetBIOSAndUid)]
+        [InlineData(LdapIdentityFormat.UidAndNetbios)]
+        [InlineData(LdapIdentityFormat.DistinguishedName)]
+        [InlineData(LdapIdentityFormat.SamAccountName)]
+        public void GetTranslator_ToSamAccountName_ReturnsProfileTranslator(LdapIdentityFormat from)
+        {
+            Assert.IsType<ProfileToSamAccountNameTranslator>(
+                Sut().GetTranslator(Context(), from, LdapIdentityFormat.SamAccountName));
+        }
+
+        [Theory]
+        [InlineData("user@domain.local")]
+        [InlineData("DOMAIN\\user")]
+        [InlineData("CN=User Name,OU=Users,DC=domain,DC=local")]
+        public void Resolve_ToSamAccountName_UsesProfileUid(string name)
+        {
+            var ctx = Context(new LdapProfile { Uid = "user", Upn = "user@domain.local" });
+
+            Assert.Equal("user", Sut().Resolve(ctx, name, LdapIdentityFormat.SamAccountName));
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public void Resolve_ToSamAccountName_EmptyUid_ReturnsNameUnchanged(string uid)
+        {
+            var ctx = Context(new LdapProfile { Uid = uid });
+
+            Assert.Equal("user@domain.local",
+                Sut().Resolve(ctx, "user@domain.local", LdapIdentityFormat.SamAccountName));
+        }
     }
 }

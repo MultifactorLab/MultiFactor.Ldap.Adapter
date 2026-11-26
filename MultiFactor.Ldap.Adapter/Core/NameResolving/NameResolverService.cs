@@ -54,6 +54,10 @@ namespace MultiFactor.Ldap.Adapter.Core.NameResolving
             {
                 return new sAMAccountNameToUpnNameTranslator();
             }
+            if (to == LdapIdentityFormat.SamAccountName)
+            {
+                return new ProfileToSamAccountNameTranslator();
+            }
             _logger.Error($"Suitable username format was not found");
             return null;
         }
