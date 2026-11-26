@@ -553,7 +553,9 @@ namespace MultiFactor.Ldap.Adapter.Server
                 Profile = matchedProfile
             };
 
-            return _nameResolverService.Resolve(context, _userName, loginFormat);
+            var transformedUserName = _nameResolverService.Resolve(context, _userName, loginFormat);
+            _logger.Debug($"Transformed username {_userName} => {transformedUserName} ({loginFormat})");
+            return transformedUserName;
         }
 
     }

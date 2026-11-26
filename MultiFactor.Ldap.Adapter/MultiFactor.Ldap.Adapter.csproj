@@ -224,6 +224,7 @@
     <Compile Include="Core\NameResolving\NameTranslators\DistinguishedNameToUpnTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTranslators\INameTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTranslators\NetbiosToUpnNameTranslator.cs" />
+    <Compile Include="Core\NameResolving\NameTranslators\ProfileToSamAccountNameTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTranslators\sAMAccountNameAndNetbiosToUpnNameTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTranslators\sAMAccountNameToUpnNameTranslator.cs" />
     <Compile Include="Core\NameResolving\NameTranslators\UpnFromProfileNameTranslator.cs" />
